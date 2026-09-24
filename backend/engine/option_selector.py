@@ -1,5 +1,5 @@
 from typing import Optional, Dict
-from backend.engine.instrument_service import instrument_service, OptionInstrument
+from backend.engine.instrument_service import instrument_service
 
 class OptionsSelector:
   """
@@ -56,10 +56,10 @@ class OptionsSelector:
       }
 
     return {
-      "trading_symbol": inst.symbol,
-      "symbol_token": inst.token,
-      "strike": inst.strike,
-      "expiry": inst.expiry,
-      "option_type": inst.option_type,
-      "lot_size": inst.lot_size
+      "trading_symbol": inst.get("symbol") or symbol,
+      "symbol_token": inst.get("token") or f"tok_{symbol}",
+      "strike": inst.get("strike") or target_strike,
+      "expiry": inst.get("expiry", "") or "26SEP2024",
+      "option_type": target_type,
+      "lot_size": inst.get("lotsize") or lot_size
     }

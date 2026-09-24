@@ -1,0 +1,102 @@
+name: algotrade
+
+services:
+  backend:
+    image: algotrade-backend:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      POSTGRES_HOST: postgres
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    depends_on:
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+
+  market-worker:
+    image: algotrade-backend:latest
+    command: ["python", "-m", "backend.workers.market_data_worker"]
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      REDIS_HOST: redis
+    depends_on:
+      - backend
+
+  strategy-worker:
+    image: algotrade-backend:latest
+    command: ["python", "-m", "backend.workers.strategy_worker"]
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - backend
+
+  order-worker:
+    image: algotrade-backend:latest
+    command: ["python", "-m", "backend.workers.order_worker"]
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - backend
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_URL: http://localhost:8000/api/v1
+        VITE_API_BASE_URL: http://localhost:8000/api/v1
+        VITE_WS_URL: ws://localhost:8000/ws
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: algotrade
+      POSTGRES_PASSWORD: algotrade_pass
+      POSTGRES_DB: algotrade_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U algotrade -d algotrade_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

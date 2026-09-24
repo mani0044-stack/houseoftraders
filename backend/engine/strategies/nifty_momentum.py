@@ -2,6 +2,15 @@ from typing import Dict, Any, Optional
 from backend.engine.strategy_framework import BaseStrategy, Signal
 
 class NiftyMomentumStrategy(BaseStrategy):
+  def __init__(
+    self,
+    strategy_id: str = "nifty-momentum",
+    name: str = "NIFTY Momentum",
+    config: Optional[Dict[str, Any]] = None
+  ):
+    super().__init__(strategy_id, name, config or {})
+    self.initialize()
+
   def initialize(self):
     self.is_running = True
     self.rsi_period = self.config.get("rsi_period", 14)

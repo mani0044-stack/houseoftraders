@@ -1,0 +1,36 @@
+# Docker
+Dockerfile*
+docker-compose*.yml
+*.docker
+
+# Node / frontend
+node_modules
+dist
+dist-ssr
+.vite
+
+# Python / backend
+__pycache__
+*.pyc
+*.pyo
+.venv
+venv
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+logs
+*.log
+
+# Git & editor
+.git
+.gitignore
+.vscode
+.idea
+
+# Misc
+algotrade.db
+.DS_Store

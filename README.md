@@ -78,3 +78,88 @@ To connect to a live FastAPI backend:
    VITE_WS_URL=ws://localhost:8000/ws
    ```
 2. Restart the Vite dev server (`npm run dev`).
+
+---
+
+## 🐳 Run Every Server At Once with Docker
+
+The stack includes every process the platform needs:
+
+| Service | What it runs | Port |
+|---------|--------------|------|
+| `frontend` | Vite production build served with `vite preview` | `3000` |
+| `backend` | FastAPI via Uvicorn (`backend.main:app`) | `8000` |
+| `market-worker` | `backend.workers.market_data_worker` (live tick stream) | internal |
+| `strategy-worker` | `backend.workers.strategy_worker` (algorithm signals) | internal |
+| `order-worker` | `backend.workers.order_worker` (risk → broker routing) | internal |
+| `redis` | Redis 7 (shared pub/sub / cache bus) | `6379` |
+| `postgres` | PostgreSQL 16 (local database option) | `5432` |
+
+### 1. Prepare environment
+```bash
+copy .env.docker.example .env
+# edit .env, then:
+#   - keep DATABASE_URL pointing at your Neon (or any external) Postgres, OR
+#   - uncomment the bundled postgres option to use the local container
+```
+
+> Note: `session.py` enables SSL for Postgres. The bundled `postgres` service has
+> SSL off, so if you point `DATABASE_URL` at it keep the `?sslmode=require` flag
+> as shown in `.env.docker.example`.
+
+### 2. Build & start the whole stack
+```bash
+docker compose up --build
+```
+
+### 3. Open the app
+* Frontend: `http://localhost:3000`
+* API docs (Swagger): `http://localhost:8000/docs`
+* Health check: `http://localhost:8000/health`
+
+Stop everything with `docker compose down` (add `-v` to also drop the Postgres volume).
+
+---
+
+## ▲ Deploy to Vercel (Serverless)
+
+The repo is pre-wired for Vercel: the SPA is built with Vite and the FastAPI
+app runs as a Python Serverless Function.
+
+* `api/index.py` — serverless entrypoint that re-exports `backend.main:app`
+* `vercel.json` — routes `/api/*` and `/health` to the function, everything
+  else to `index.html` (SPA fallback)
+
+### 1. Project settings (auto-detected)
+* Framework: **Vite** (from `framework: "vite"`)
+* Build command: `npm run build`
+* Output directory: `dist`
+* Python deps are installed automatically from root `requirements.txt`
+
+### 2. Environment variables
+Add these in **Vercel Dashboard → Project → Settings → Environment Variables**
+(duplicate for Production / Preview / Development). Use `.env.vercel.example`
+as the checklist:
+
+| Variable | Value / note |
+|----------|--------------|
+| `VITE_API_URL` | `=/api/v1` (relative → hits the serverless function) |
+| `VITE_API_BASE_URL` | `/api/v1` |
+| `DATABASE_URL` | your Neon/Postgres connection string (`?sslmode=require`) |
+| `LIVE_TRADING` | `false` |
+| `SECRET_KEY` | random 64-byte hex (`python -c "import secrets; print(secrets.token_urlsafe(64))"`) |
+| `ENCRYPTION_KEY` | Fernet key (`python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`) |
+| `VERCEL` | `1` (skips long-running background tasks) |
+
+### 3. Deploy
+```bash
+vercel --prod
+```
+Or connect the GitHub repo in the Vercel dashboard and push to your branch.
+
+### Vercel limitations to know
+* **WebSockets** are not supported by Vercel Serverless Functions, so the live
+  `/ws` feed stays disconnected on Vercel and the frontend **automatically falls
+  back to its built-in simulated tick stream** (no code changes needed).
+* Long-running background workers (market/strategy/order) do **not** run on
+  Vercel. Run them with Docker or a VPS while the API is served serverless.

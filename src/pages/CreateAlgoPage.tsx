@@ -169,22 +169,22 @@ export const CreateAlgoPage: React.FC = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <Layers className="w-5 h-5 text-[#0F4C3A]" /> Easy Strategy Builder
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight font-sans flex items-center gap-2">
+            <Layers className="w-5 h-5 text-blue-600" /> Easy Strategy Builder
           </h1>
-          <p className="text-xs text-slate-500 font-mono mt-0.5">
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
             Create multi-leg Option Spreads (Bull Call Spread, Put Spread, Iron Condor) or Technical Algos
           </p>
         </div>
 
         {/* Builder Mode Switcher */}
-        <div className="inline-flex rounded-xl p-1 bg-slate-100 border border-slate-200 text-xs font-semibold">
+        <div className="inline-flex rounded-2xl p-1 bg-white border border-slate-200/90 text-xs font-semibold shadow-xs">
           <button
             type="button"
             onClick={() => setBuilderType('OptionSpread')}
-            className={`px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
               builderType === 'OptionSpread'
-                ? 'bg-[#0F4C3A] text-white shadow-xs'
+                ? 'bg-blue-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -193,9 +193,9 @@ export const CreateAlgoPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setBuilderType('TechnicalRules')}
-            className={`px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
               builderType === 'TechnicalRules'
-                ? 'bg-[#0F4C3A] text-white shadow-xs'
+                ? 'bg-blue-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -206,25 +206,25 @@ export const CreateAlgoPage: React.FC = () => {
 
       <div className="space-y-6">
         {/* 1. BASIC INFORMATION & UNDERLYING */}
-        <section className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-          <h3 className="text-xs uppercase font-mono font-bold text-[#0F4C3A] flex items-center gap-2">
-            <Cpu className="w-4 h-4" /> 1. Strategy Name & Underlying Asset
+        <section className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-4">
+          <h3 className="text-xs uppercase font-sans font-bold text-blue-600 tracking-wider flex items-center gap-2">
+            <Cpu className="w-4 h-4 text-blue-600" /> 1. Strategy Name & Underlying Asset
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-xs uppercase text-slate-500 font-medium mb-1">Strategy Title</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Strategy Title</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. NIFTY Bull Call Spread"
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-semibold focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-bold focus:outline-none focus:border-blue-600"
               />
             </div>
 
             <div>
-              <label className="block text-xs uppercase text-slate-500 font-medium mb-1">Underlying Asset</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Underlying Asset</label>
               <select
                 value={underlying}
                 onChange={(e) => {
@@ -233,7 +233,7 @@ export const CreateAlgoPage: React.FC = () => {
                   const preset = STRATEGY_PRESETS.find((p) => p.type === strategyType);
                   if (preset) setName(`${newSym} ${preset.label}`);
                 }}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-bold font-mono focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-bold font-sans focus:outline-none focus:border-blue-600"
               >
                 <option value="NIFTY">NIFTY</option>
                 <option value="BANKNIFTY">BANKNIFTY</option>
@@ -243,19 +243,19 @@ export const CreateAlgoPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs uppercase text-slate-500 font-medium mb-1">Strategy Description</label>
+            <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Strategy Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#0F4C3A]"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 font-medium focus:outline-none focus:border-blue-600"
             />
           </div>
         </section>
 
         {/* 2. OPTION STRATEGY BUILDER / TECHNICAL RULES */}
         {builderType === 'OptionSpread' ? (
-          <section className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
+          <section className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs">
             <OptionStrategyBuilder
               selectedType={strategyType}
               onSelectType={handleSelectStrategyType}
@@ -264,70 +264,70 @@ export const CreateAlgoPage: React.FC = () => {
             />
           </section>
         ) : (
-          <section className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-            <h3 className="text-xs uppercase font-mono font-bold text-[#0F4C3A]">
+          <section className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-4">
+            <h3 className="text-xs uppercase font-sans font-bold text-blue-600 tracking-wider">
               Technical Indicator Entry Rules
             </h3>
             <ConditionBuilder conditions={entryConditions} onChange={setEntryConditions} />
           </section>
         )}
 
-        {/* 3. ENTRY & EXIT TIMING (ALGOTEST FEATURES) */}
-        <section className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
+        {/* 3. ENTRY & EXIT TIMING */}
+        <section className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-            <h3 className="text-xs uppercase font-mono font-bold text-[#0F4C3A] flex items-center gap-2">
-              <Clock className="w-4 h-4 text-[#0F4C3A]" /> 3. Entry & Exit Timing (AlgoTest Mode)
+            <h3 className="text-xs uppercase font-sans font-bold text-blue-600 tracking-wider flex items-center gap-2">
+              <Clock className="w-4 h-4 text-blue-600" /> 3. Entry & Exit Timing (AlgoTest Mode)
             </h3>
             {/* Execution Mode Toggle */}
-            <div className="inline-flex rounded-lg p-0.5 bg-slate-100 border border-slate-200 text-xs font-bold font-mono">
+            <div className="inline-flex rounded-xl p-0.5 bg-slate-100 border border-slate-200 text-xs font-bold font-sans">
               <button
                 type="button"
                 onClick={() => setExecutionMode('Intraday')}
-                className={`px-3 py-1 rounded transition-all ${
-                  executionMode === 'Intraday' ? 'bg-[#0F4C3A] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                className={`px-3.5 py-1.5 rounded-lg transition-all ${
+                  executionMode === 'Intraday' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                ⚡ Intraday
+                Intraday
               </button>
               <button
                 type="button"
                 onClick={() => setExecutionMode('Positional')}
-                className={`px-3 py-1 rounded transition-all ${
-                  executionMode === 'Positional' ? 'bg-[#0F4C3A] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                className={`px-3.5 py-1.5 rounded-lg transition-all ${
+                  executionMode === 'Positional' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                📅 Positional
+                Positional
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 font-mono">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 font-sans">
             <div>
-              <label className="block text-xs uppercase text-slate-500 font-medium mb-1">Entry Time (IST)</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Entry Time (IST)</label>
               <input
                 type="time"
                 value={entryTime}
                 onChange={(e) => setEntryTime(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono-num font-bold focus:outline-none focus:border-blue-600"
               />
             </div>
 
             <div>
-              <label className="block text-xs uppercase text-slate-500 font-medium mb-1">Exit Time (Square Off)</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Exit Time (Square Off)</label>
               <input
                 type="time"
                 value={exitTime}
                 onChange={(e) => setExitTime(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono-num font-bold focus:outline-none focus:border-blue-600"
               />
             </div>
 
             <div>
-              <label className="block text-xs uppercase text-slate-500 font-medium mb-1">Expiry Cycle</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Expiry Cycle</label>
               <select
                 value={expiryType}
                 onChange={(e) => setExpiryType(e.target.value as any)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-sans font-bold focus:outline-none focus:border-blue-600"
               >
                 <option value="Nearest">Nearest Expiry (Weekly)</option>
                 <option value="Next">Next Expiry (Weekly)</option>
@@ -336,11 +336,11 @@ export const CreateAlgoPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs uppercase text-slate-500 font-medium mb-1">Entry Trigger</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Entry Trigger</label>
               <select
                 value={entryTrigger}
                 onChange={(e) => setEntryTrigger(e.target.value as any)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-sans font-bold focus:outline-none focus:border-blue-600"
               >
                 <option value="Market Open (9:20 AM)">Exact Time Match ({entryTime})</option>
                 <option value="Momentum Breakout">Spot Price Breakout</option>
@@ -351,15 +351,15 @@ export const CreateAlgoPage: React.FC = () => {
 
           {/* Positional Holding Rules */}
           {executionMode === 'Positional' && (
-            <div className="p-3 rounded-lg bg-purple-50/60 border border-purple-200 space-y-2 font-mono text-xs">
-              <span className="font-bold text-purple-900 uppercase">Positional Multi-Day Exit Rules</span>
+            <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-200/80 space-y-2 font-sans text-xs">
+              <span className="font-bold text-blue-900 uppercase tracking-wider text-xs">Positional Multi-Day Exit Rules</span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-purple-700 text-[11px] mb-1">Positional Square-Off Mode</label>
+                  <label className="block text-blue-800 text-[11px] mb-1 font-semibold">Positional Square-Off Mode</label>
                   <select
                     value={positionalExitMode}
                     onChange={(e) => setPositionalExitMode(e.target.value as any)}
-                    className="w-full bg-white border border-purple-200 rounded-md px-2 py-1 text-slate-900"
+                    className="w-full bg-white border border-blue-200 rounded-lg px-2.5 py-1.5 text-slate-900 font-bold"
                   >
                     <option value="Hold Till Expiry">Hold Till Expiry Day</option>
                     <option value="DTE Exit">Exit at Specific DTE</option>
@@ -367,14 +367,14 @@ export const CreateAlgoPage: React.FC = () => {
                 </div>
                 {positionalExitMode === 'DTE Exit' && (
                   <div>
-                    <label className="block text-purple-700 text-[11px] mb-1">Exit DTE (0 = Expiry Day)</label>
+                    <label className="block text-blue-800 text-[11px] mb-1 font-semibold">Exit DTE (0 = Expiry Day)</label>
                     <input
                       type="number"
                       min={0}
                       max={7}
                       value={positionalExitDTE}
                       onChange={(e) => setPositionalExitDTE(parseInt(e.target.value) || 0)}
-                      className="w-full bg-white border border-purple-200 rounded-md px-2 py-1 text-slate-900 font-bold"
+                      className="w-full bg-white border border-blue-200 rounded-lg px-2.5 py-1.5 text-slate-900 font-bold font-mono-num"
                     />
                   </div>
                 )}
@@ -384,10 +384,10 @@ export const CreateAlgoPage: React.FC = () => {
 
           {/* Active Trading Days */}
           <div>
-            <label className="block text-xs uppercase font-mono text-slate-500 font-medium mb-1.5">
+            <label className="block text-xs uppercase font-sans text-slate-500 font-bold mb-2 tracking-wider">
               Active Execution Days
             </label>
-            <div className="flex flex-wrap items-center gap-2 font-mono">
+            <div className="flex flex-wrap items-center gap-2 font-sans">
               {(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as const).map((day) => {
                 const active = enabledDays.includes(day);
                 return (
@@ -395,10 +395,10 @@ export const CreateAlgoPage: React.FC = () => {
                     key={day}
                     type="button"
                     onClick={() => toggleDay(day)}
-                    className={`px-3 py-1 rounded border text-xs font-bold transition-all ${
+                    className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all ${
                       active
-                        ? 'bg-[#0F4C3A] text-white border-[#0F4C3A]'
-                        : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-300'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300'
                     }`}
                   >
                     {day}
@@ -410,82 +410,82 @@ export const CreateAlgoPage: React.FC = () => {
         </section>
 
         {/* 4. EXIT RULES & RISK MANAGEMENT */}
-        <section className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-          <h3 className="text-xs uppercase font-mono font-bold text-[#0F4C3A]">
+        <section className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-4">
+          <h3 className="text-xs uppercase font-sans font-bold text-blue-600 tracking-wider">
             4. Exit Rules & Target / SL Safeguards
           </h3>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 font-mono">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 font-sans">
             <div>
-              <label className="block text-xs uppercase text-slate-500 font-medium mb-1">Stop Loss (% Premium)</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Stop Loss (% Premium)</label>
               <input
                 type="number"
                 value={stopLossPercent}
                 onChange={(e) => setStopLossPercent(parseFloat(e.target.value) || 0)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono-num font-bold focus:outline-none focus:border-blue-600"
               />
             </div>
 
             <div>
-              <label className="block text-xs uppercase text-slate-500 font-medium mb-1">Target Profit (% Premium)</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Target Profit (% Premium)</label>
               <input
                 type="number"
                 value={targetPercent}
                 onChange={(e) => setTargetPercent(parseFloat(e.target.value) || 0)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono-num font-bold focus:outline-none focus:border-blue-600"
               />
             </div>
 
             <div>
-              <label className="block text-xs uppercase text-slate-500 font-medium mb-1">Trailing SL (%)</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Trailing SL (%)</label>
               <input
                 type="number"
                 value={trailingStopLossPercent}
                 onChange={(e) => setTrailingStopLossPercent(parseFloat(e.target.value) || 0)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono-num font-bold focus:outline-none focus:border-blue-600"
               />
             </div>
 
             <div>
-              <label className="block text-xs uppercase text-slate-500 font-medium mb-1">Auto Intraday Exit (IST)</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Auto Intraday Exit (IST)</label>
               <input
                 type="time"
                 value={exitTime}
                 onChange={(e) => setExitTime(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono-num font-bold focus:outline-none focus:border-blue-600"
               />
             </div>
           </div>
         </section>
 
         {/* 5. MULTI-ACCOUNT ASSIGNMENT MATRIX */}
-        <section className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-          <h3 className="text-xs uppercase font-mono font-bold text-[#0F4C3A]">
+        <section className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-4">
+          <h3 className="text-xs uppercase font-sans font-bold text-blue-600 tracking-wider">
             5. Multi-Account Broker Execution Matrix
           </h3>
 
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {accountAllocations.map((acc) => (
-              <div key={acc.accountId} className="p-3 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between text-xs font-mono">
+              <div key={acc.accountId} className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 flex items-center justify-between text-xs font-sans">
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
                     checked={acc.enabled}
                     onChange={() => handleAccountToggle(acc.accountId)}
-                    className="w-4 h-4 rounded bg-white border-slate-300 text-[#0F4C3A] focus:ring-0 cursor-pointer"
+                    className="w-4 h-4 rounded bg-white border-slate-300 text-blue-600 focus:ring-0 cursor-pointer"
                   />
-                  <span className="font-semibold text-slate-900">{acc.accountName}</span>
+                  <span className="font-bold text-slate-900">{acc.accountName}</span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-500">Lots Multiplier:</span>
+                  <span className="text-slate-500 font-medium">Lots Multiplier:</span>
                   <input
                     type="number"
                     value={acc.lotsMultiplier}
                     onChange={(e) => handleMultiplierChange(acc.accountId, parseInt(e.target.value) || 1)}
                     disabled={!acc.enabled}
                     min={1}
-                    className="w-16 bg-white border border-slate-200 rounded px-2 py-1 text-center text-slate-900 disabled:opacity-50 font-bold"
+                    className="w-16 bg-white border border-slate-200 rounded-lg px-2 py-1 text-center text-slate-900 disabled:opacity-50 font-mono-num font-bold"
                   />
                 </div>
               </div>
@@ -494,37 +494,37 @@ export const CreateAlgoPage: React.FC = () => {
         </section>
 
         {/* 6. RISK CAPS */}
-        <section className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-          <h3 className="text-xs uppercase font-mono font-bold text-[#0F4C3A]">6. Daily Strategy Risk Limits</h3>
+        <section className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-4">
+          <h3 className="text-xs uppercase font-sans font-bold text-blue-600 tracking-wider">6. Daily Strategy Risk Limits</h3>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs uppercase text-slate-500 font-medium mb-1">Max Daily Loss (₹)</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Max Daily Loss (₹)</label>
               <input
                 type="number"
                 value={maxDailyLoss}
                 onChange={(e) => setMaxDailyLoss(parseFloat(e.target.value) || 0)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono-num font-bold focus:outline-none focus:border-blue-600"
               />
             </div>
 
             <div>
-              <label className="block text-xs uppercase text-slate-500 font-medium mb-1">Max Trades Per Day</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Max Trades Per Day</label>
               <input
                 type="number"
                 value={maxTradesPerDay}
                 onChange={(e) => setMaxTradesPerDay(parseInt(e.target.value) || 0)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono-num font-bold focus:outline-none focus:border-blue-600"
               />
             </div>
 
             <div>
-              <label className="block text-xs uppercase text-slate-500 font-medium mb-1">Max Concurrent Spread Trades</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Max Concurrent Spread Trades</label>
               <input
                 type="number"
                 value={maxOpenPositions}
                 onChange={(e) => setMaxOpenPositions(parseInt(e.target.value) || 0)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono-num font-bold focus:outline-none focus:border-blue-600"
               />
             </div>
           </div>
@@ -535,21 +535,21 @@ export const CreateAlgoPage: React.FC = () => {
           <button
             type="button"
             onClick={() => handleSaveStrategy()}
-            className="px-4 py-2.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 border border-slate-200 rounded-lg"
+            className="px-4 py-2.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 border border-slate-200 rounded-xl transition-colors"
           >
             Save as Draft
           </button>
           <button
             type="button"
             onClick={() => handleSaveStrategy('Paper')}
-            className="px-5 py-2.5 text-xs font-bold bg-[#0F4C3A] hover:bg-[#0A3A2A] text-white rounded-lg shadow-sm uppercase tracking-wider flex items-center gap-1.5"
+            className="px-5 py-2.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xs uppercase tracking-wider flex items-center gap-1.5 transition-all"
           >
             <Play className="w-4 h-4 fill-current" /> Start Paper Trading
           </button>
           <button
             type="button"
             onClick={() => handleSaveStrategy('Live')}
-            className="px-5 py-2.5 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-lg shadow-sm uppercase tracking-wider flex items-center gap-1.5"
+            className="px-5 py-2.5 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl shadow-xs uppercase tracking-wider flex items-center gap-1.5 transition-all"
           >
             <ShieldCheck className="w-4 h-4" /> Start Live Execution
           </button>

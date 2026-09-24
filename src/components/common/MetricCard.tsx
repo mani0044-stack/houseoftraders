@@ -27,38 +27,38 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 }) => {
   let colorStyle = 'text-slate-900';
   if (valueColor === 'profit' || (typeof change === 'number' && change > 0)) {
-    colorStyle = 'text-emerald-700';
+    colorStyle = 'text-emerald-600';
   } else if (valueColor === 'loss' || (typeof change === 'number' && change < 0)) {
-    colorStyle = 'text-red-600';
+    colorStyle = 'text-rose-600';
   } else if (valueColor === 'brand') {
-    colorStyle = 'text-[#0F4C3A]';
+    colorStyle = 'text-blue-600';
   }
 
   return (
     <div
       className={clsx(
-        'bg-white border border-slate-200 rounded-xl p-4 hover:border-slate-300 hover:shadow-md transition-all relative overflow-hidden group',
+        'bg-white border border-slate-200/90 rounded-2xl p-5 hover:border-slate-300 hover:shadow-md transition-all relative overflow-hidden group',
         className
       )}
     >
       <div className="flex items-center justify-between">
-        <span className="text-xs uppercase tracking-wider text-slate-500 font-semibold">{title}</span>
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{title}</span>
         {Icon && (
-          <div className="p-2 rounded-lg bg-emerald-50 text-[#0F4C3A] border border-emerald-100 group-hover:bg-[#0F4C3A] group-hover:text-white transition-colors">
+          <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all shadow-xs">
             <Icon className="w-4 h-4" />
           </div>
         )}
       </div>
 
-      <div className="mt-2 flex items-baseline justify-between gap-2">
+      <div className="mt-3 flex items-baseline justify-between gap-2">
         <span className={clsx('text-2xl font-bold font-mono-num tracking-tight', colorStyle)}>
           {value}
         </span>
         {typeof change === 'number' && (
           <span
             className={clsx(
-              'text-xs font-semibold font-mono-num px-1.5 py-0.5 rounded border',
-              change >= 0 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-red-700 bg-red-50 border-red-200'
+              'text-xs font-semibold font-mono-num px-2 py-0.5 rounded-md border shrink-0',
+              change >= 0 ? 'text-emerald-700 bg-emerald-50 border-emerald-200/80' : 'text-rose-700 bg-rose-50 border-rose-200/80'
             )}
           >
             {change >= 0 ? '+' : ''}{change}{changeSuffix}
@@ -66,7 +66,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         )}
       </div>
 
-      {subtext && <p className="mt-1.5 text-xs text-slate-500">{subtext}</p>}
+      {subtext && <p className="mt-2 text-xs text-slate-500 font-medium leading-normal">{subtext}</p>}
     </div>
   );
 };

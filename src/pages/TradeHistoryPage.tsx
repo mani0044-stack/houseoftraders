@@ -20,67 +20,70 @@ export const TradeHistoryPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Completed Trade History</h1>
-          <p className="text-xs text-slate-500 font-mono mt-0.5">Historical Execution Ledger & P&L Audit Log</p>
+          <p className="text-xs text-slate-500 font-normal mt-0.5">Historical Execution Ledger & P&L Audit Log</p>
         </div>
 
-        <button className="px-3.5 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 rounded-lg flex items-center gap-1.5 font-mono">
-          <Download className="w-3.5 h-3.5" /> Export Trades (CSV)
+        <button className="px-3.5 py-1.5 text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-lg flex items-center gap-1.5 transition-colors shadow-xs">
+          <Download className="w-3.5 h-3.5 text-slate-500" /> Export Trades (CSV)
         </button>
       </div>
 
       {/* Search Bar */}
-      <div className="bg-white border border-slate-200 rounded-xl p-3 flex items-center gap-2 shadow-xs">
+      <div className="card-premium p-3 flex items-center gap-2.5">
         <Search className="w-4 h-4 text-slate-400" />
         <input
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Search by Symbol, Algo, or Account..."
-          className="bg-transparent text-xs text-slate-900 outline-none w-full font-mono"
+          className="bg-transparent text-xs text-slate-900 placeholder:text-slate-400 outline-none w-full"
         />
       </div>
 
-      <DataTable>
-        <TableHeader>
-          <tr>
-            <th className="px-3 py-2 text-left">Time</th>
-            <th className="px-3 py-2 text-left">Account</th>
-            <th className="px-3 py-2 text-left">Algo Source</th>
-            <th className="px-3 py-2 text-left">Symbol</th>
-            <th className="px-3 py-2 text-center">Side</th>
-            <th className="px-3 py-2 text-right">Qty</th>
-            <th className="px-3 py-2 text-right">Entry Price</th>
-            <th className="px-3 py-2 text-right">Exit Price</th>
-            <th className="px-3 py-2 text-right">Net P&L (₹)</th>
-            <th className="px-3 py-2 text-right">Charges</th>
-          </tr>
-        </TableHeader>
-        <tbody>
-          {filtered.map((t) => (
-            <TableRow key={t.id}>
-              <TableCell className="text-slate-500 text-xs font-mono">{t.time}</TableCell>
-              <TableCell className="font-medium text-slate-800">{t.account}</TableCell>
-              <TableCell className="text-slate-600 text-xs">{t.algo}</TableCell>
-              <TableCell className="font-bold text-slate-900 font-mono">{t.symbol}</TableCell>
-              <TableCell className="text-center">
-                <span className={`px-2 py-0.5 rounded text-xs font-bold font-mono ${t.side === 'BUY' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-                  {t.side}
-                </span>
-              </TableCell>
-              <TableCell className="text-right font-bold text-slate-800">{t.qty}</TableCell>
-              <TableCell className="text-right text-slate-700">₹{t.entryPrice.toFixed(2)}</TableCell>
-              <TableCell className="text-right text-slate-700">₹{t.exitPrice.toFixed(2)}</TableCell>
-              <TableCell className={`text-right font-bold ${t.pnl >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                ₹{t.pnl.toLocaleString()}
-              </TableCell>
-              <TableCell className="text-right text-slate-500">₹{t.charges}</TableCell>
-            </TableRow>
-          ))}
-        </tbody>
-      </DataTable>
+      <div className="card-premium p-0 overflow-hidden">
+        <DataTable>
+          <TableHeader>
+            <tr>
+              <th className="px-3.5 py-2.5 text-left text-xs font-semibold text-slate-600">Time</th>
+              <th className="px-3.5 py-2.5 text-left text-xs font-semibold text-slate-600">Account</th>
+              <th className="px-3.5 py-2.5 text-left text-xs font-semibold text-slate-600">Algo Source</th>
+              <th className="px-3.5 py-2.5 text-left text-xs font-semibold text-slate-600">Symbol</th>
+              <th className="px-3.5 py-2.5 text-center text-xs font-semibold text-slate-600">Side</th>
+              <th className="px-3.5 py-2.5 text-right text-xs font-semibold text-slate-600">Qty</th>
+              <th className="px-3.5 py-2.5 text-right text-xs font-semibold text-slate-600">Entry Price</th>
+              <th className="px-3.5 py-2.5 text-right text-xs font-semibold text-slate-600">Exit Price</th>
+              <th className="px-3.5 py-2.5 text-right text-xs font-semibold text-slate-600">Net P&L (₹)</th>
+              <th className="px-3.5 py-2.5 text-right text-xs font-semibold text-slate-600">Charges</th>
+            </tr>
+          </TableHeader>
+          <tbody>
+            {filtered.map((t) => (
+              <TableRow key={t.id}>
+                <TableCell className="text-slate-500 text-xs font-mono-num">{t.time}</TableCell>
+                <TableCell className="font-semibold text-slate-800 text-xs">{t.account}</TableCell>
+                <TableCell className="text-slate-600 text-xs">{t.algo}</TableCell>
+                <TableCell className="font-bold text-slate-900 text-xs">{t.symbol}</TableCell>
+                <TableCell className="text-center">
+                  <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${t.side === 'BUY' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
+                    {t.side}
+                  </span>
+                </TableCell>
+                <TableCell className="text-right font-bold text-slate-800 font-mono-num">{t.qty}</TableCell>
+                <TableCell className="text-right text-slate-700 font-mono-num">₹{t.entryPrice.toFixed(2)}</TableCell>
+                <TableCell className="text-right text-slate-700 font-mono-num">₹{t.exitPrice.toFixed(2)}</TableCell>
+                <TableCell className={`text-right font-bold font-mono-num ${t.pnl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  ₹{t.pnl.toLocaleString()}
+                </TableCell>
+                <TableCell className="text-right text-slate-500 font-mono-num">₹{t.charges}</TableCell>
+              </TableRow>
+            ))}
+          </tbody>
+        </DataTable>
+      </div>
     </div>
   );
 };
+

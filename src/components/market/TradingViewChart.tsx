@@ -56,10 +56,10 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
           symbol: getTvSymbol(symbol),
           interval: getInterval(timeframe),
           timezone: 'Asia/Kolkata',
-          theme: 'dark',
+          theme: 'light',
           style: '1',
           locale: 'en',
-          toolbar_bg: '#111827',
+          toolbar_bg: '#FFFFFF',
           enable_publishing: false,
           allow_symbol_change: true,
           container_id: containerId.current,
@@ -88,7 +88,7 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
   }, [symbol, timeframe]);
 
   return (
-    <div className="w-full h-full rounded-xl overflow-hidden border border-[#1F293D] bg-[#111827]" style={{ height }}>
+    <div className="w-full h-full rounded-2xl overflow-hidden border border-slate-200/90 bg-white shadow-xs" style={{ height }}>
       <div ref={containerRef} className="w-full h-full min-h-[420px]" />
     </div>
   );

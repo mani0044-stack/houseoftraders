@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ResponsiveContainer, ComposedChart, Area, Line, XAxis, YAxis, Tooltip, CartesianGrid, Bar } from 'recharts';
 import { Candle, Timeframe, TechnicalIndicatorState } from '../../types/market';
 import { clsx } from 'clsx';
@@ -22,25 +22,24 @@ export const TradingChart: React.FC<TradingChartProps> = ({
   indicators,
   onIndicatorsChange
 }) => {
-
   return (
-    <div className="bg-[#111827] border border-[#1F293D] rounded-xl p-4 shadow-sm flex flex-col h-full">
+    <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs flex flex-col h-full">
       {/* Controls Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#1F293D]">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-slate-100">
         <div className="flex items-center gap-2">
-          <span className="font-bold text-base text-gray-100 font-mono">{symbol}</span>
-          <span className="text-xs text-gray-400 font-mono">NSE FO</span>
+          <span className="font-bold text-base text-slate-900 font-sans">{symbol}</span>
+          <span className="text-xs text-slate-500 font-semibold px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200">NSE FO</span>
         </div>
 
         {/* Timeframe Selector */}
-        <div className="flex items-center gap-1 bg-[#162032] p-1 rounded-lg border border-[#1F293D]">
+        <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
           {timeframes.map((tf) => (
             <button
               key={tf}
               onClick={() => onTimeframeChange(tf)}
               className={clsx(
-                'px-2 py-0.5 text-xs font-mono font-medium rounded transition-colors',
-                timeframe === tf ? 'bg-brand text-white font-semibold' : 'text-gray-400 hover:text-gray-200'
+                'px-2.5 py-1 text-xs font-semibold rounded-lg transition-all',
+                timeframe === tf ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               )}
             >
               {tf}
@@ -49,28 +48,28 @@ export const TradingChart: React.FC<TradingChartProps> = ({
         </div>
 
         {/* Indicator Toggles */}
-        <div className="flex items-center gap-1.5 text-xs font-mono">
+        <div className="flex items-center gap-1.5 text-xs">
           <button
             onClick={() => onIndicatorsChange({ ...indicators, ema9: !indicators.ema9 })}
-            className={clsx('px-2 py-1 rounded border', indicators.ema9 ? 'bg-blue-500/20 text-blue-400 border-blue-500/40 font-bold' : 'bg-[#162032] text-gray-400 border-[#1F293D]')}
+            className={clsx('px-2.5 py-1 rounded-lg border font-semibold transition-colors', indicators.ema9 ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-600 border-slate-200')}
           >
             EMA 9
           </button>
           <button
             onClick={() => onIndicatorsChange({ ...indicators, ema21: !indicators.ema21 })}
-            className={clsx('px-2 py-1 rounded border', indicators.ema21 ? 'bg-purple-500/20 text-purple-400 border-purple-500/40 font-bold' : 'bg-[#162032] text-gray-400 border-[#1F293D]')}
+            className={clsx('px-2.5 py-1 rounded-lg border font-semibold transition-colors', indicators.ema21 ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-slate-50 text-slate-600 border-slate-200')}
           >
             EMA 21
           </button>
           <button
             onClick={() => onIndicatorsChange({ ...indicators, vwap: !indicators.vwap })}
-            className={clsx('px-2 py-1 rounded border', indicators.vwap ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 font-bold' : 'bg-[#162032] text-gray-400 border-[#1F293D]')}
+            className={clsx('px-2.5 py-1 rounded-lg border font-semibold transition-colors', indicators.vwap ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-slate-50 text-slate-600 border-slate-200')}
           >
             VWAP
           </button>
           <button
             onClick={() => onIndicatorsChange({ ...indicators, rsi: !indicators.rsi })}
-            className={clsx('px-2 py-1 rounded border', indicators.rsi ? 'bg-profit-bg text-profit border-profit/40 font-bold' : 'bg-[#162032] text-gray-400 border-[#1F293D]')}
+            className={clsx('px-2.5 py-1 rounded-lg border font-semibold transition-colors', indicators.rsi ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-600 border-slate-200')}
           >
             RSI
           </button>
@@ -83,38 +82,38 @@ export const TradingChart: React.FC<TradingChartProps> = ({
           <ComposedChart data={candles} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="chartBg" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2}/>
-                <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.0}/>
+                <stop offset="5%" stopColor="#2563EB" stopOpacity={0.15}/>
+                <stop offset="95%" stopColor="#2563EB" stopOpacity={0.0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1F293D" vertical={false} />
-            <XAxis dataKey="time" stroke="#64748B" fontSize={11} tickLine={false} />
-            <YAxis stroke="#64748B" fontSize={11} tickLine={false} domain={['auto', 'auto']} tickFormatter={(v) => v.toFixed(0)} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+            <XAxis dataKey="time" stroke="#94A3B8" fontSize={11} tickLine={false} axisLine={false} />
+            <YAxis stroke="#94A3B8" fontSize={11} tickLine={false} axisLine={false} domain={['auto', 'auto']} tickFormatter={(v) => v.toFixed(0)} />
             <Tooltip
-              contentStyle={{ backgroundColor: '#111827', borderColor: '#1F293D', borderRadius: '8px', fontSize: '12px' }}
+              contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', borderRadius: '12px', fontSize: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)' }}
               formatter={(val: any, name: any) => [`₹${Number(val).toFixed(2)}`, String(name).toUpperCase()]}
             />
             
-            <Area type="monotone" dataKey="close" stroke="#3B82F6" strokeWidth={2} fill="url(#chartBg)" name="Price" />
+            <Area type="monotone" dataKey="close" stroke="#2563EB" strokeWidth={2.5} fill="url(#chartBg)" name="Price" />
             
-            {indicators.ema9 && <Line type="monotone" dataKey="ema9" stroke="#60A5FA" strokeWidth={1.5} dot={false} name="EMA 9" />}
-            {indicators.ema21 && <Line type="monotone" dataKey="ema21" stroke="#A855F7" strokeWidth={1.5} dot={false} name="EMA 21" />}
+            {indicators.ema9 && <Line type="monotone" dataKey="ema9" stroke="#3B82F6" strokeWidth={1.5} dot={false} name="EMA 9" />}
+            {indicators.ema21 && <Line type="monotone" dataKey="ema21" stroke="#8B5CF6" strokeWidth={1.5} dot={false} name="EMA 21" />}
             {indicators.vwap && <Line type="monotone" dataKey="vwap" stroke="#F59E0B" strokeWidth={1.5} dot={false} name="VWAP" />}
             
-            <Bar dataKey="volume" fill="#1E293B" opacity={0.3} />
+            <Bar dataKey="volume" fill="#E2E8F0" opacity={0.5} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
 
       {/* Subchart for RSI if toggled */}
       {indicators.rsi && (
-        <div className="h-28 border-t border-[#1F293D] pt-2 mt-2">
-          <div className="text-[10px] uppercase font-mono text-gray-400 font-semibold mb-1">RSI (14) Indicator Subchart</div>
+        <div className="h-28 border-t border-slate-100 pt-2 mt-2">
+          <div className="text-[10px] uppercase font-sans text-slate-400 font-semibold mb-1">RSI (14) Indicator Subchart</div>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={candles} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1F293D" vertical={false} />
-              <YAxis stroke="#64748B" fontSize={10} domain={[0, 100]} tickCount={3} />
-              <Line type="monotone" dataKey="rsi" stroke="#10B981" strokeWidth={1.5} dot={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+              <YAxis stroke="#94A3B8" fontSize={10} domain={[0, 100]} tickCount={3} />
+              <Line type="monotone" dataKey="rsi" stroke="#16A34A" strokeWidth={1.5} dot={false} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>

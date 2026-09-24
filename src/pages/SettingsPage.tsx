@@ -38,56 +38,56 @@ export const SettingsPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Platform Configuration & Settings</h1>
-          <p className="text-xs text-slate-500 font-mono mt-0.5">Backend REST API, WebSocket Endpoints & System Preferences</p>
+          <p className="text-xs text-slate-500 font-normal mt-0.5">Backend REST API, WebSocket Endpoints & System Preferences</p>
         </div>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* API & WEBSOCKET ENDPOINTS */}
-        <section className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-          <h3 className="text-xs uppercase font-mono font-bold text-[#0F4C3A] flex items-center gap-2">
-            <Wifi className="w-4 h-4" /> Backend API & WebSocket Connectivity
+        <section className="card-premium p-5 space-y-4">
+          <h3 className="text-xs uppercase font-bold text-blue-700 flex items-center gap-2 tracking-wider">
+            <Wifi className="w-4 h-4 text-blue-600" /> Backend API & WebSocket Connectivity
           </h3>
 
-          <div className="space-y-3 font-mono text-xs">
+          <div className="space-y-3.5 text-xs">
             <div>
-              <label className="block text-slate-500 font-semibold mb-1">FastAPI Backend Base URL</label>
+              <label className="block text-slate-600 font-medium mb-1">FastAPI Backend Base URL</label>
               <input
                 type="text"
                 value={backendUrl}
                 onChange={(e) => setBackendUrl(e.target.value)}
                 placeholder="http://localhost:8000/api"
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white transition-all font-mono-num"
               />
             </div>
 
             <div>
-              <label className="block text-slate-500 font-semibold mb-1">WebSocket Ticker Stream URL</label>
+              <label className="block text-slate-600 font-medium mb-1">WebSocket Ticker Stream URL</label>
               <input
                 type="text"
                 value={wsUrl}
                 onChange={(e) => setWsUrl(e.target.value)}
                 placeholder="ws://localhost:8000/ws"
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white transition-all font-mono-num"
               />
             </div>
           </div>
         </section>
 
         {/* DEFAULT RISK PARAMETERS */}
-        <section className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-          <h3 className="text-xs uppercase font-mono font-bold text-[#0F4C3A] flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4" /> Default Risk Caps
+        <section className="card-premium p-5 space-y-4">
+          <h3 className="text-xs uppercase font-bold text-blue-700 flex items-center gap-2 tracking-wider">
+            <ShieldCheck className="w-4 h-4 text-blue-600" /> Default Risk Caps
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
             <div>
-              <label className="block text-slate-500 font-semibold mb-1">Default Daily Loss Cap (₹)</label>
+              <label className="block text-slate-600 font-medium mb-1">Default Daily Loss Cap (₹)</label>
               <input
                 type="number"
                 value={defaultDailyLossCap}
                 onChange={(e) => setDefaultDailyLossCap(parseFloat(e.target.value) || 0)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white transition-all font-mono-num"
               />
             </div>
 
@@ -96,17 +96,17 @@ export const SettingsPage: React.FC = () => {
                 type="checkbox"
                 checked={autoKillOnDisconnect}
                 onChange={(e) => setAutoKillOnDisconnect(e.target.checked)}
-                className="w-4 h-4 rounded bg-white border-slate-300 text-[#0F4C3A] focus:ring-0 cursor-pointer"
+                className="w-4 h-4 rounded bg-white border-slate-300 text-blue-600 focus:ring-0 cursor-pointer"
               />
-              <span className="text-slate-800 font-sans">Emergency Kill Algos on WS Disconnect</span>
+              <span className="text-slate-800 font-medium">Emergency Kill Algos on WS Disconnect</span>
             </div>
           </div>
         </section>
 
         {/* NOTIFICATIONS */}
-        <section className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-          <h3 className="text-xs uppercase font-mono font-bold text-[#0F4C3A] flex items-center gap-2">
-            <Bell className="w-4 h-4" /> Toast & Audio Alerts
+        <section className="card-premium p-5 space-y-4">
+          <h3 className="text-xs uppercase font-bold text-blue-700 flex items-center gap-2 tracking-wider">
+            <Bell className="w-4 h-4 text-blue-600" /> Toast & Audio Alerts
           </h3>
 
           <div className="flex items-center gap-3 text-xs">
@@ -114,16 +114,16 @@ export const SettingsPage: React.FC = () => {
               type="checkbox"
               checked={soundAlerts}
               onChange={(e) => setSoundAlerts(e.target.checked)}
-              className="w-4 h-4 rounded bg-white border-slate-300 text-[#0F4C3A] focus:ring-0 cursor-pointer"
+              className="w-4 h-4 rounded bg-white border-slate-300 text-blue-600 focus:ring-0 cursor-pointer"
             />
-            <span className="text-slate-800">Play Audio Sound Chime on Order Executions & Risk Alerts</span>
+            <span className="text-slate-800 font-medium">Play Audio Sound Chime on Order Executions & Risk Alerts</span>
           </div>
         </section>
 
         {/* DANGER ZONE - ACCOUNT & STRATEGY DELETION */}
-        <section className="bg-red-50/50 border border-red-200 rounded-xl p-5 shadow-xs space-y-4">
-          <h3 className="text-xs uppercase font-mono font-bold text-red-700 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4" /> Danger Zone & Account Management
+        <section className="card-premium p-5 space-y-4 border-rose-200 bg-rose-50/30">
+          <h3 className="text-xs uppercase font-bold text-rose-700 flex items-center gap-2 tracking-wider">
+            <AlertTriangle className="w-4 h-4 text-rose-600" /> Danger Zone & Account Management
           </h3>
           <p className="text-xs text-slate-600">
             Purge strategies or delete all broker accounts in one click.
@@ -133,7 +133,7 @@ export const SettingsPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsResetAlgosModalOpen(true)}
-              className="px-4 py-2 text-xs font-bold bg-white text-red-700 border border-red-300 hover:bg-red-600 hover:text-white rounded-lg transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 text-xs font-semibold bg-white text-rose-700 border border-rose-200 hover:bg-rose-600 hover:text-white rounded-lg transition-colors flex items-center gap-1.5 shadow-xs"
             >
               <Trash2 className="w-4 h-4" /> Delete All Strategies ({algos.length})
             </button>
@@ -141,7 +141,7 @@ export const SettingsPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsResetAccountsModalOpen(true)}
-              className="px-4 py-2 text-xs font-bold bg-white text-red-700 border border-red-300 hover:bg-red-600 hover:text-white rounded-lg transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 text-xs font-semibold bg-white text-rose-700 border border-rose-200 hover:bg-rose-600 hover:text-white rounded-lg transition-colors flex items-center gap-1.5 shadow-xs"
             >
               <Trash2 className="w-4 h-4" /> Delete All Accounts ({accounts.length})
             </button>
@@ -149,12 +149,12 @@ export const SettingsPage: React.FC = () => {
         </section>
 
         {/* SECURITY NOTE */}
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-3 text-xs text-slate-800">
-          <Lock className="w-5 h-5 text-[#0F4C3A] shrink-0 mt-0.5" />
+        <div className="p-4 rounded-xl bg-blue-50/70 border border-blue-100 flex items-start gap-3 text-xs text-slate-800">
+          <Lock className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
           <div>
-            <h4 className="font-bold text-[#0F4C3A]">Strict Security & Confidentiality Policy</h4>
-            <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
-              AlgoTrade frontend never stores broker API keys, TOTP seeds, PINs, or JWT tokens in localStorage or cookies. All broker authentication and execution requests pass through secure backend REST & WebSocket proxies.
+            <h4 className="font-bold text-blue-900">Strict Security & Confidentiality Policy</h4>
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              House of Traders frontend never stores broker API keys, TOTP seeds, PINs, or JWT tokens in localStorage or cookies. All broker authentication and execution requests pass through secure backend REST & WebSocket proxies.
             </p>
           </div>
         </div>
@@ -162,7 +162,7 @@ export const SettingsPage: React.FC = () => {
         <div className="flex justify-end pt-2">
           <button
             type="submit"
-            className="px-6 py-2.5 text-xs font-bold bg-[#0F4C3A] hover:bg-[#0A3A2A] text-white rounded-lg shadow-sm uppercase tracking-wider flex items-center gap-2"
+            className="px-6 py-2.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm tracking-wider flex items-center gap-2 transition-colors"
           >
             <Save className="w-4 h-4" /> Save Settings
           </button>
@@ -192,3 +192,4 @@ export const SettingsPage: React.FC = () => {
     </div>
   );
 };
+

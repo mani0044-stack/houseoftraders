@@ -12,7 +12,7 @@ const mockDailyPnL = [
 ];
 
 const winLossData = [
-  { name: 'Winning Trades (64%)', value: 32, color: '#059669' },
+  { name: 'Winning Trades (64%)', value: 32, color: '#16A34A' },
   { name: 'Losing Trades (36%)', value: 18, color: '#DC2626' },
 ];
 
@@ -22,13 +22,13 @@ export const AnalyticsPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Algorithmic Performance Analytics</h1>
-          <p className="text-xs text-slate-500 font-mono mt-0.5">Deep Portfolio Diagnostics & Strategy Attribution</p>
+          <p className="text-xs text-slate-500 font-normal mt-0.5">Deep Portfolio Diagnostics & Strategy Attribution</p>
         </div>
       </div>
 
       {/* Disclaimer Alert */}
-      <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-center gap-2 font-mono shadow-xs">
-        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+      <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-100 text-xs text-blue-900 flex items-center gap-2.5 shadow-xs font-normal">
+        <AlertCircle className="w-4 h-4 text-blue-600 shrink-0" />
         <span>NOTICE: Historical performance and backtested statistics do not guarantee future returns.</span>
       </div>
 
@@ -45,18 +45,18 @@ export const AnalyticsPage: React.FC = () => {
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Daily PnL Bar Chart */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs h-[300px] flex flex-col">
-          <h3 className="text-xs uppercase font-mono font-bold text-slate-900 mb-2">Daily Realized P&L Breakdown</h3>
-          <div className="flex-1 min-h-[220px]">
+        <div className="card-premium p-4 h-[320px] flex flex-col">
+          <h3 className="text-xs uppercase tracking-wider font-bold text-slate-800 mb-3">Daily Realized P&L Breakdown</h3>
+          <div className="flex-1 min-h-[230px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={mockDailyPnL}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
-                <XAxis dataKey="day" stroke="#64748B" fontSize={11} />
-                <YAxis stroke="#64748B" fontSize={11} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
-                <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#CBD5E1', borderRadius: '8px', fontSize: '12px' }} />
-                <Bar dataKey="pnl">
+                <XAxis dataKey="day" stroke="#64748B" fontSize={11} tickLine={false} />
+                <YAxis stroke="#64748B" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+                <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }} />
+                <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
                   {mockDailyPnL.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.pnl >= 0 ? '#059669' : '#DC2626'} />
+                    <Cell key={`cell-${index}`} fill={entry.pnl >= 0 ? '#16A34A' : '#DC2626'} />
                   ))}
                 </Bar>
               </BarChart>
@@ -65,17 +65,17 @@ export const AnalyticsPage: React.FC = () => {
         </div>
 
         {/* Win / Loss Pie Chart */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs h-[300px] flex flex-col">
-          <h3 className="text-xs uppercase font-mono font-bold text-slate-900 mb-2">Trade Win / Loss Distribution</h3>
-          <div className="flex-1 min-h-[220px]">
+        <div className="card-premium p-4 h-[320px] flex flex-col">
+          <h3 className="text-xs uppercase tracking-wider font-bold text-slate-800 mb-3">Trade Win / Loss Distribution</h3>
+          <div className="flex-1 min-h-[230px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={winLossData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                <Pie data={winLossData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={85} label>
                   {winLossData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#CBD5E1', borderRadius: '8px', fontSize: '12px' }} />
+                <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -84,3 +84,4 @@ export const AnalyticsPage: React.FC = () => {
     </div>
   );
 };
+

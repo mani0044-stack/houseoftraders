@@ -19,19 +19,19 @@ export const PnLChart: React.FC = () => {
   const [viewMode, setViewMode] = useState<'cumulative' | 'intraday'>('cumulative');
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex flex-col h-full">
-      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+    <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs flex flex-col h-full">
+      <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
         <div>
-          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">P&L Performance Overview</h3>
-          <p className="text-xs text-slate-500 font-mono">Live Intraday Realized & Unrealized P&L Curve</p>
+          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">P&L Performance Curve</h3>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">Live Intraday Realized & Unrealized Performance</p>
         </div>
 
-        <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200">
+        <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
           <button
             onClick={() => setViewMode('cumulative')}
             className={clsx(
-              'px-2.5 py-1 text-xs font-mono font-medium rounded transition-colors',
-              viewMode === 'cumulative' ? 'bg-[#0F4C3A] text-white font-semibold shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              'px-3 py-1 text-xs font-semibold rounded-lg transition-all',
+              viewMode === 'cumulative' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
             )}
           >
             Cumulative
@@ -39,8 +39,8 @@ export const PnLChart: React.FC = () => {
           <button
             onClick={() => setViewMode('intraday')}
             className={clsx(
-              'px-2.5 py-1 text-xs font-mono font-medium rounded transition-colors',
-              viewMode === 'intraday' ? 'bg-[#0F4C3A] text-white font-semibold shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              'px-3 py-1 text-xs font-semibold rounded-lg transition-all',
+              viewMode === 'intraday' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
             )}
           >
             Intraday Step
@@ -52,30 +52,37 @@ export const PnLChart: React.FC = () => {
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={mockIntradayPnL} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
-              <linearGradient id="pnlGreen" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#059669" stopOpacity={0.25}/>
-                <stop offset="95%" stopColor="#059669" stopOpacity={0.0}/>
+              <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#2563EB" stopOpacity={0.2}/>
+                <stop offset="95%" stopColor="#2563EB" stopOpacity={0.0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
-            <XAxis dataKey="time" stroke="#64748B" fontSize={11} tickLine={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+            <XAxis dataKey="time" stroke="#94A3B8" fontSize={11} tickLine={false} axisLine={false} />
             <YAxis
-              stroke="#64748B"
+              stroke="#94A3B8"
               fontSize={11}
               tickLine={false}
+              axisLine={false}
               tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
             />
             <Tooltip
-              contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#CBD5E1', borderRadius: '8px', fontSize: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+              contentStyle={{ 
+                backgroundColor: '#FFFFFF', 
+                borderColor: '#E5E7EB', 
+                borderRadius: '12px', 
+                fontSize: '12px', 
+                boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)' 
+              }}
               formatter={(value: any) => [`₹${Number(value).toLocaleString()}`, viewMode === 'cumulative' ? 'Cumulative P&L' : 'Step P&L']}
             />
             <Area
               type="monotone"
               dataKey={viewMode === 'cumulative' ? 'cumulative' : 'pnl'}
-              stroke="#059669"
-              strokeWidth={2}
+              stroke="#2563EB"
+              strokeWidth={2.5}
               fillOpacity={1}
-              fill="url(#pnlGreen)"
+              fill="url(#pnlGradient)"
             />
           </AreaChart>
         </ResponsiveContainer>

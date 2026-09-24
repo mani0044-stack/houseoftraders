@@ -14,7 +14,10 @@ import {
   Users, 
   ShieldAlert, 
   Wifi,
-  DollarSign
+  DollarSign,
+  Sparkles,
+  ArrowUpRight,
+  Zap
 } from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
@@ -23,6 +26,7 @@ export const DashboardPage: React.FC = () => {
   const positions = useTradingStore((s) => s.positions);
   const wsConnected = useTradingStore((s) => s.wsConnected);
   const wsLatencyMs = useTradingStore((s) => s.wsLatencyMs);
+  const tradingMode = useTradingStore((s) => s.tradingMode);
 
   const totalCapital = accounts.reduce((acc, a) => acc + a.totalCapital, 0);
   const totalMargin = accounts.reduce((acc, a) => acc + a.availableMargin, 0);
@@ -32,22 +36,41 @@ export const DashboardPage: React.FC = () => {
   const openPositionsCount = positions.filter((p) => p.status === 'OPEN').length;
 
   return (
-    <div className="space-y-6">
-      {/* Top Page Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 max-w-[1600px] mx-auto pb-6">
+      {/* Top Welcome & Market Overview Banner */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Algorithmic Options Trading Overview</h1>
-          <p className="text-xs text-slate-500 font-mono mt-0.5">Multi-Account Real-Time Terminal & Execution Monitor</p>
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[11px] font-bold uppercase tracking-wider border border-blue-100">
+              {tradingMode} MODE
+            </span>
+            <span className="text-xs text-slate-400 font-medium">• Live Angel SmartAPI Feed</span>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1 font-sans">
+            House of Traders Terminal
+          </h1>
+          <p className="text-xs text-slate-500 mt-1 font-medium">
+            Multi-Account Options Algorithmic Execution & Portfolio Intelligence
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 self-start md:self-auto">
+          <div className="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-right">
+            <div className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Today's Total P&L</div>
+            <div className={`text-lg font-bold font-mono-num ${todaysPnL >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+              {todaysPnL >= 0 ? '+' : ''}₹{todaysPnL.toLocaleString()}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Top 8 KPI Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+      {/* Top 8 Metric Cards Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
         <MetricCard
           title="Total Capital"
           value={`₹${(totalCapital / 100000).toFixed(2)}L`}
           icon={Wallet}
-          subtext="Combined Portfolio"
+          subtext="Combined Capital"
         />
         <MetricCard
           title="Avail. Margin"
@@ -79,10 +102,10 @@ export const DashboardPage: React.FC = () => {
           title="Active Accounts"
           value={`${activeAccountsCount} / ${accounts.length}`}
           icon={Users}
-          subtext="Angel One Connected"
+          subtext="Angel Connected"
         />
         <MetricCard
-          title="Daily Risk Used"
+          title="Daily Risk"
           value="43%"
           valueColor="neutral"
           icon={ShieldAlert}
@@ -93,12 +116,12 @@ export const DashboardPage: React.FC = () => {
           value={wsConnected ? `${wsLatencyMs}ms` : 'Off'}
           valueColor={wsConnected ? 'profit' : 'loss'}
           icon={Wifi}
-          subtext="Live Ticker Feed"
+          subtext="Live Feed Ping"
         />
       </div>
 
       {/* P&L Performance Chart */}
-      <div className="h-[340px]">
+      <div className="h-[360px]">
         <PnLChart />
       </div>
 

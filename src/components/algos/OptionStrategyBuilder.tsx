@@ -187,7 +187,7 @@ export const OptionStrategyBuilder: React.FC<OptionStrategyBuilderProps> = ({
       case 'Bullish':
         return <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />;
       case 'Bearish':
-        return <TrendingDown className="w-3.5 h-3.5 text-red-600" />;
+        return <TrendingDown className="w-3.5 h-3.5 text-rose-600" />;
       case 'Volatile':
         return <Activity className="w-3.5 h-3.5 text-purple-600" />;
       default:
@@ -200,10 +200,10 @@ export const OptionStrategyBuilder: React.FC<OptionStrategyBuilderProps> = ({
       {/* 1. Strategy Preset Selector Grid */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <label className="text-xs uppercase font-mono font-bold text-slate-700 flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-[#0F4C3A]" /> Select Option Strategy Template
+          <label className="text-xs uppercase font-sans font-bold text-slate-700 flex items-center gap-1.5 tracking-wider">
+            <CheckCircle2 className="w-4 h-4 text-blue-600" /> Select Option Strategy Template
           </label>
-          <span className="text-[11px] font-mono text-slate-500">Pick a preset to auto-configure legs</span>
+          <span className="text-[11px] font-sans text-slate-500 font-medium">Pick a preset to auto-configure legs</span>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
@@ -214,25 +214,25 @@ export const OptionStrategyBuilder: React.FC<OptionStrategyBuilderProps> = ({
                 key={preset.type}
                 type="button"
                 onClick={() => handleSelectPreset(preset)}
-                className={`p-3 rounded-xl border text-left transition-all relative flex flex-col justify-between ${
+                className={`p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between ${
                   isSelected
-                    ? 'bg-emerald-50/80 border-[#0F4C3A] ring-2 ring-[#0F4C3A]/20 shadow-xs'
+                    ? 'bg-blue-50/70 border-blue-600 ring-2 ring-blue-500/20 shadow-xs'
                     : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                 }`}
               >
                 <div>
                   <div className="flex items-center justify-between gap-1 mb-1">
-                    <span className="font-bold text-xs text-slate-900 tracking-tight">{preset.label}</span>
-                    <span className="flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
+                    <span className="font-bold text-xs text-slate-900 font-sans tracking-tight">{preset.label}</span>
+                    <span className="flex items-center gap-1 text-[10px] font-sans font-semibold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
                       {getBiasIcon(preset.bias)}
                       {preset.bias}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
+                  <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed font-medium">
                     {preset.description}
                   </p>
                 </div>
-                <div className="mt-2 text-[10px] font-mono text-slate-600 font-medium">
+                <div className="mt-2 text-[10px] font-sans text-slate-600 font-bold">
                   {preset.payoffType}
                 </div>
               </button>
@@ -242,27 +242,27 @@ export const OptionStrategyBuilder: React.FC<OptionStrategyBuilderProps> = ({
       </div>
 
       {/* 2. Selected Strategy Description & Visual Payoff Info */}
-      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+      <div className="p-4.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Info className="w-4 h-4 text-[#0F4C3A]" />
-            <h4 className="font-bold text-xs text-slate-900 uppercase font-mono">{currentPreset.label} Overview</h4>
+            <Info className="w-4 h-4 text-blue-600" />
+            <h4 className="font-bold text-xs text-slate-900 uppercase font-sans tracking-wider">{currentPreset.label} Overview</h4>
           </div>
-          <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-100 text-[#0F4C3A]">
+          <span className="text-[11px] font-sans font-bold px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-800">
             {currentPreset.payoffType}
           </span>
         </div>
-        <p className="text-xs text-slate-600 leading-relaxed font-sans">{currentPreset.description}</p>
+        <p className="text-xs text-slate-600 leading-relaxed font-medium">{currentPreset.description}</p>
 
         <div className="pt-2 flex flex-wrap gap-2 items-center">
-          <span className="text-[11px] font-mono text-slate-500">Active Legs Breakdown:</span>
+          <span className="text-[11px] font-sans text-slate-500 font-medium">Active Legs Breakdown:</span>
           {legs.map((leg, idx) => (
             <span
               key={leg.id || idx}
-              className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+              className={`text-[10px] font-mono-num font-bold px-2.5 py-0.5 rounded-md border ${
                 leg.action === 'BUY'
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                  : 'bg-red-50 text-red-800 border-red-300'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  : 'bg-rose-50 text-rose-800 border-rose-200'
               }`}
             >
               {leg.action} {leg.lots}x {leg.strikeSelection} {leg.optionType}
@@ -274,33 +274,33 @@ export const OptionStrategyBuilder: React.FC<OptionStrategyBuilderProps> = ({
       {/* 3. Multi-Leg Interactive Configurator */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h4 className="text-xs uppercase font-mono font-bold text-slate-800">Configure Strategy Legs</h4>
+          <h4 className="text-xs uppercase font-sans font-bold text-slate-800 tracking-wider">Configure Strategy Legs</h4>
           <button
             type="button"
             onClick={handleAddLeg}
-            className="px-2.5 py-1 text-xs font-semibold text-[#0F4C3A] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors flex items-center gap-1.5"
+            className="px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 rounded-xl transition-colors flex items-center gap-1.5"
           >
             <Plus className="w-3.5 h-3.5" /> Add Leg
           </button>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {legs.map((leg, index) => (
             <div
               key={leg.id}
-              className="p-3 rounded-xl bg-white border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs font-mono shadow-2xs"
+              className="p-3.5 rounded-2xl bg-white border border-slate-200/80 flex flex-wrap items-center justify-between gap-3 text-xs font-sans shadow-xs"
             >
               <div className="flex items-center gap-2">
-                <span className="text-slate-400 font-bold text-[11px] w-5">#{index + 1}</span>
+                <span className="text-slate-400 font-bold text-[11px] w-5 font-mono-num">#{index + 1}</span>
 
                 {/* BUY / SELL Toggle */}
-                <div className="inline-flex rounded-md border border-slate-200 p-0.5 bg-slate-100">
+                <div className="inline-flex rounded-xl border border-slate-200 p-0.5 bg-slate-100 font-bold">
                   <button
                     type="button"
                     onClick={() => handleUpdateLeg(leg.id, { action: 'BUY' })}
-                    className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all ${
+                    className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${
                       leg.action === 'BUY'
-                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        ? 'bg-emerald-600 text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -309,9 +309,9 @@ export const OptionStrategyBuilder: React.FC<OptionStrategyBuilderProps> = ({
                   <button
                     type="button"
                     onClick={() => handleUpdateLeg(leg.id, { action: 'SELL' })}
-                    className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all ${
+                    className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${
                       leg.action === 'SELL'
-                        ? 'bg-red-600 text-white shadow-2xs'
+                        ? 'bg-rose-600 text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -320,13 +320,13 @@ export const OptionStrategyBuilder: React.FC<OptionStrategyBuilderProps> = ({
                 </div>
 
                 {/* Call / Put Toggle */}
-                <div className="inline-flex rounded-md border border-slate-200 p-0.5 bg-slate-100">
+                <div className="inline-flex rounded-xl border border-slate-200 p-0.5 bg-slate-100 font-bold">
                   <button
                     type="button"
                     onClick={() => handleUpdateLeg(leg.id, { optionType: 'CE' })}
-                    className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all ${
+                    className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${
                       leg.optionType === 'CE'
-                        ? 'bg-blue-600 text-white shadow-2xs'
+                        ? 'bg-blue-600 text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -335,9 +335,9 @@ export const OptionStrategyBuilder: React.FC<OptionStrategyBuilderProps> = ({
                   <button
                     type="button"
                     onClick={() => handleUpdateLeg(leg.id, { optionType: 'PE' })}
-                    className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all ${
+                    className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${
                       leg.optionType === 'PE'
-                        ? 'bg-amber-600 text-white shadow-2xs'
+                        ? 'bg-amber-600 text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -349,11 +349,11 @@ export const OptionStrategyBuilder: React.FC<OptionStrategyBuilderProps> = ({
               <div className="flex items-center gap-3">
                 {/* Strike Selector */}
                 <div>
-                  <label className="text-[10px] text-slate-400 block mb-0.5 uppercase">Strike Selection</label>
+                  <label className="text-[10px] text-slate-500 block mb-0.5 uppercase font-bold tracking-wider">Strike Selection</label>
                   <select
                     value={leg.strikeSelection}
                     onChange={(e) => handleUpdateLeg(leg.id, { strikeSelection: e.target.value as StrikeSelection })}
-                    className="bg-slate-50 border border-slate-200 rounded-md px-2 py-1 text-xs text-slate-900 font-semibold focus:outline-none focus:border-[#0F4C3A]"
+                    className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 font-bold focus:outline-none focus:border-blue-600"
                   >
                     <option value="ATM">ATM (At The Money)</option>
                     <optgroup label="Out Of The Money (OTM 1 to 15)">
@@ -380,25 +380,25 @@ export const OptionStrategyBuilder: React.FC<OptionStrategyBuilderProps> = ({
 
                 {leg.strikeSelection === 'Closest Premium' && (
                   <div>
-                    <label className="text-[10px] text-slate-400 block mb-0.5 uppercase">Premium (₹)</label>
+                    <label className="text-[10px] text-slate-500 block mb-0.5 uppercase font-bold tracking-wider">Premium (₹)</label>
                     <input
                       type="number"
                       value={leg.targetPremium || 100}
                       onChange={(e) => handleUpdateLeg(leg.id, { targetPremium: parseFloat(e.target.value) || 50 })}
-                      className="w-16 bg-slate-50 border border-slate-200 rounded-md px-2 py-1 text-center text-xs text-slate-900 font-bold focus:outline-none focus:border-[#0F4C3A]"
+                      className="w-16 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-center text-xs text-slate-900 font-bold font-mono-num focus:outline-none focus:border-blue-600"
                     />
                   </div>
                 )}
 
                 {/* Lots Input */}
                 <div>
-                  <label className="text-[10px] text-slate-400 block mb-0.5 uppercase">Lots</label>
+                  <label className="text-[10px] text-slate-500 block mb-0.5 uppercase font-bold tracking-wider">Lots</label>
                   <input
                     type="number"
                     value={leg.lots}
                     onChange={(e) => handleUpdateLeg(leg.id, { lots: Math.max(1, parseInt(e.target.value) || 1) })}
                     min={1}
-                    className="w-16 bg-slate-50 border border-slate-200 rounded-md px-2 py-1 text-center text-xs text-slate-900 font-bold focus:outline-none focus:border-[#0F4C3A]"
+                    className="w-16 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-center text-xs text-slate-900 font-bold font-mono-num focus:outline-none focus:border-blue-600"
                   />
                 </div>
 
@@ -407,7 +407,7 @@ export const OptionStrategyBuilder: React.FC<OptionStrategyBuilderProps> = ({
                   type="button"
                   onClick={() => handleRemoveLeg(leg.id)}
                   disabled={legs.length <= 1}
-                  className="p-1.5 text-slate-400 hover:text-red-600 rounded hover:bg-red-50 disabled:opacity-30 disabled:hover:bg-transparent"
+                  className="p-1.5 text-slate-400 hover:text-rose-600 rounded-xl hover:bg-rose-50 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
                   title="Remove Leg"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -415,9 +415,9 @@ export const OptionStrategyBuilder: React.FC<OptionStrategyBuilderProps> = ({
               </div>
 
               {/* Leg Level Risk Management (AlgoTest Leg SL, TP, Re-entry) */}
-              <div className="w-full pt-2 mt-1 border-t border-slate-100 flex flex-wrap items-center gap-4 text-[11px]">
+              <div className="w-full pt-2.5 mt-1 border-t border-slate-100 flex flex-wrap items-center gap-4 text-[11px] font-sans">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-slate-500 font-semibold">Leg SL:</span>
+                  <span className="text-slate-500 font-bold">Leg SL:</span>
                   <select
                     value={leg.riskSettings?.slType || 'None'}
                     onChange={(e) =>
@@ -432,7 +432,7 @@ export const OptionStrategyBuilder: React.FC<OptionStrategyBuilderProps> = ({
                         },
                       })
                     }
-                    className="bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-slate-800 text-[11px]"
+                    className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-800 text-[11px] font-semibold"
                   >
                     <option value="None">None</option>
                     <option value="Percentage">Percentage (%)</option>
@@ -452,13 +452,13 @@ export const OptionStrategyBuilder: React.FC<OptionStrategyBuilderProps> = ({
                           },
                         })
                       }
-                      className="w-14 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-center font-bold text-slate-900 text-[11px]"
+                      className="w-14 bg-slate-50 border border-slate-200 rounded-lg px-1.5 py-1 text-center font-bold text-slate-900 text-[11px] font-mono-num"
                     />
                   )}
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                  <span className="text-slate-500 font-semibold">Leg Target:</span>
+                  <span className="text-slate-500 font-bold">Leg Target:</span>
                   <select
                     value={leg.riskSettings?.tpType || 'None'}
                     onChange={(e) =>
@@ -473,7 +473,7 @@ export const OptionStrategyBuilder: React.FC<OptionStrategyBuilderProps> = ({
                         },
                       })
                     }
-                    className="bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-slate-800 text-[11px]"
+                    className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-800 text-[11px] font-semibold"
                   >
                     <option value="None">None</option>
                     <option value="Percentage">Percentage (%)</option>
@@ -492,13 +492,13 @@ export const OptionStrategyBuilder: React.FC<OptionStrategyBuilderProps> = ({
                           },
                         })
                       }
-                      className="w-14 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-center font-bold text-slate-900 text-[11px]"
+                      className="w-14 bg-slate-50 border border-slate-200 rounded-lg px-1.5 py-1 text-center font-bold text-slate-900 text-[11px] font-mono-num"
                     />
                   )}
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                  <span className="text-slate-500 font-semibold">Re-Entry / Re-Execute:</span>
+                  <span className="text-slate-500 font-bold">Re-Entry / Re-Execute:</span>
                   <select
                     value={leg.riskSettings?.reEntryType || 'None'}
                     onChange={(e) =>
@@ -513,7 +513,7 @@ export const OptionStrategyBuilder: React.FC<OptionStrategyBuilderProps> = ({
                         },
                       })
                     }
-                    className="bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-slate-800 text-[11px]"
+                    className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-800 text-[11px] font-semibold"
                   >
                     <option value="None">No Re-Entry</option>
                     <option value="Re-Entry Immediate">Re-Entry Immediate</option>
@@ -536,7 +536,7 @@ export const OptionStrategyBuilder: React.FC<OptionStrategyBuilderProps> = ({
                             },
                           })
                         }
-                        className="w-10 bg-slate-50 border border-slate-200 rounded px-1 py-0.5 text-center font-bold text-slate-900 text-[11px]"
+                        className="w-10 bg-slate-50 border border-slate-200 rounded-lg px-1 py-1 text-center font-bold text-slate-900 text-[11px] font-mono-num"
                       />
                     </div>
                   )}

@@ -16,43 +16,43 @@ export const TickerCard: React.FC<TickerCardProps> = ({ quote, isSelected, onCli
     <div
       onClick={onClick}
       className={clsx(
-        'bg-white border rounded-xl p-4 cursor-pointer transition-all shadow-xs relative overflow-hidden',
-        isSelected ? 'border-[#0F4C3A] ring-2 ring-[#0F4C3A]/20 bg-emerald-50/30' : 'border-slate-200 hover:border-slate-300'
+        'bg-white border rounded-2xl p-4.5 cursor-pointer transition-all shadow-xs relative overflow-hidden group',
+        isSelected ? 'border-blue-600 ring-2 ring-blue-500/20 bg-blue-50/20' : 'border-slate-200/90 hover:border-slate-300 hover:shadow-md'
       )}
     >
       <div className="flex items-center justify-between">
-        <span className="font-bold text-base text-slate-900 font-mono tracking-tight">{quote.symbol}</span>
-        <span className="text-[10px] text-slate-500 font-mono flex items-center gap-1">
-          <Activity className="w-3 h-3 text-emerald-600 animate-pulse" /> {quote.lastUpdated}
+        <span className="font-bold text-sm text-slate-900 font-sans tracking-tight">{quote.symbol}</span>
+        <span className="text-[10px] text-slate-400 font-mono font-medium flex items-center gap-1">
+          <Activity className="w-3 h-3 text-emerald-500 animate-pulse" /> {quote.lastUpdated}
         </span>
       </div>
 
-      <div className="mt-2 flex items-baseline justify-between">
-        <span className={`text-2xl font-bold font-mono-num ${isPositive ? 'text-emerald-700' : 'text-red-600'}`}>
-          {quote.ltp.toFixed(2)}
+      <div className="mt-2.5 flex items-baseline justify-between">
+        <span className={`text-2xl font-bold font-mono-num tracking-tight ${isPositive ? 'text-emerald-600' : 'text-rose-600'}`}>
+          ₹{quote.ltp.toFixed(2)}
         </span>
-        <span className={`text-xs font-semibold font-mono-num px-2 py-0.5 rounded border ${isPositive ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-red-700 bg-red-50 border-red-200'}`}>
+        <span className={`text-xs font-semibold font-mono-num px-2 py-0.5 rounded-md border shrink-0 flex items-center gap-1 ${isPositive ? 'text-emerald-700 bg-emerald-50 border-emerald-200/80' : 'text-rose-700 bg-rose-50 border-rose-200/80'}`}>
           {isPositive ? <TrendingUp className="w-3 h-3 inline" /> : <TrendingDown className="w-3 h-3 inline" />}
           {isPositive ? '+' : ''}{quote.change.toFixed(2)} ({isPositive ? '+' : ''}{quote.changePercent}%)
         </span>
       </div>
 
-      <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-slate-100 text-[10px] font-mono text-slate-500">
+      <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-slate-100 text-[10px] font-mono-num text-slate-400">
         <div>
           <span>Open</span>
-          <p className="text-slate-800 font-semibold">{quote.open.toFixed(1)}</p>
+          <p className="text-slate-800 font-bold mt-0.5">₹{quote.open.toFixed(1)}</p>
         </div>
         <div>
           <span>High</span>
-          <p className="text-emerald-700 font-semibold">{quote.high.toFixed(1)}</p>
+          <p className="text-emerald-600 font-bold mt-0.5">₹{quote.high.toFixed(1)}</p>
         </div>
         <div>
           <span>Low</span>
-          <p className="text-red-600 font-semibold">{quote.low.toFixed(1)}</p>
+          <p className="text-rose-600 font-bold mt-0.5">₹{quote.low.toFixed(1)}</p>
         </div>
         <div>
           <span>P.Close</span>
-          <p className="text-slate-800 font-semibold">{quote.prevClose.toFixed(1)}</p>
+          <p className="text-slate-800 font-bold mt-0.5">₹{quote.prevClose.toFixed(1)}</p>
         </div>
       </div>
     </div>

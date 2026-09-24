@@ -17,36 +17,36 @@ export const ActivityLogsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">System & Execution Activity Logs</h1>
-          <p className="text-xs text-slate-500 font-mono mt-0.5">Real-time System Audit Stream & Severity Filter</p>
+          <p className="text-xs text-slate-500 font-normal mt-0.5">Real-time System Audit Stream & Severity Filter</p>
         </div>
 
-        <button className="px-3.5 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 rounded-lg flex items-center gap-1.5 font-mono">
-          <Download className="w-3.5 h-3.5" /> Export Logs (JSON)
+        <button className="px-3.5 py-1.5 text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-lg flex items-center gap-1.5 transition-colors shadow-xs">
+          <Download className="w-3.5 h-3.5 text-slate-500" /> Export Logs (JSON)
         </button>
       </div>
 
       {/* Search & Filter Controls */}
-      <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs font-mono shadow-xs">
-        <div className="flex items-center gap-2 flex-1 max-w-md bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
+      <div className="card-premium p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2 flex-1 max-w-md bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg focus-within:border-blue-500 focus-within:bg-white transition-all">
           <Search className="w-4 h-4 text-slate-400" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search logs by keyword..."
-            className="bg-transparent text-slate-900 outline-none w-full"
+            className="bg-transparent text-slate-900 outline-none w-full placeholder:text-slate-400"
           />
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-slate-500 font-semibold">Severity:</span>
+          <span className="text-slate-500 font-medium">Severity:</span>
           <select
             value={severityFilter}
             onChange={(e) => setSeverityFilter(e.target.value as any)}
-            className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 outline-none"
+            className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 outline-none focus:border-blue-500 font-semibold"
           >
             <option value="ALL">All Severities</option>
             <option value="INFO">INFO</option>
@@ -58,22 +58,23 @@ export const ActivityLogsPage: React.FC = () => {
       </div>
 
       {/* Stream List */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2 shadow-xs">
+      <div className="card-premium p-4 space-y-2.5">
         {filtered.map((log) => (
-          <div key={log.id} className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 hover:border-slate-300 transition-colors flex items-start justify-between gap-4 font-mono text-xs">
-            <div className="space-y-1">
+          <div key={log.id} className="p-3.5 rounded-xl bg-slate-50/60 border border-slate-200/80 hover:border-blue-200 hover:bg-white transition-all flex items-start justify-between gap-4 text-xs">
+            <div className="space-y-1.5">
               <div className="flex items-center gap-2">
                 <StatusBadge status={log.severity} size="sm" />
-                <span className="font-bold text-slate-900">{log.title}</span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-slate-200 text-slate-700">{log.category}</span>
+                <span className="font-semibold text-slate-900">{log.title}</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-200/70 text-slate-600 font-medium">{log.category}</span>
               </div>
-              <p className="text-slate-700 leading-relaxed font-sans">{log.message}</p>
+              <p className="text-slate-600 leading-relaxed font-normal">{log.message}</p>
             </div>
 
-            <span className="text-[11px] text-slate-500 shrink-0">{log.timestamp}</span>
+            <span className="text-[11px] text-slate-400 shrink-0 font-mono-num">{log.timestamp}</span>
           </div>
         ))}
       </div>
     </div>
   );
 };
+

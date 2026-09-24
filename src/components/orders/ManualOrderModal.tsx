@@ -113,35 +113,35 @@ export const ManualOrderModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-fade-scale">
       <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
         {/* Close button */}
         <button
           onClick={() => setManualOrderOpen(false)}
-          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100"
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Header */}
         <div className="flex items-center gap-3">
-          <div className="p-3 rounded-xl bg-emerald-50 text-[#0F4C3A] border border-emerald-200">
+          <div className="p-3 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100">
             <Zap className="w-6 h-6 fill-current" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-900 tracking-tight">Angel One Real-Time Order Placement</h2>
-            <p className="text-xs text-slate-500 font-mono">Transmits live market/limit orders via SmartAPI</p>
+            <h2 className="text-lg font-bold text-slate-900 tracking-tight font-sans">Angel One Order Terminal</h2>
+            <p className="text-xs text-slate-500 font-medium">Transmits live market/limit orders via SmartAPI</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           {/* Target Account Selector */}
           <div>
-            <label className="block text-xs uppercase text-slate-500 font-semibold mb-1">Target Account Execution</label>
+            <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Target Account Execution</label>
             <select
               value={accountId}
               onChange={(e) => setAccountId(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono font-semibold focus:outline-none focus:border-[#0F4C3A]"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-sans font-bold focus:outline-none focus:border-blue-600"
             >
               <option value="ALL"> Broadcast Order to ALL Active Accounts ({accounts.filter(a => a.isEnabled).length})</option>
               {accounts.map((acc) => (
@@ -154,14 +154,14 @@ export const ManualOrderModal: React.FC = () => {
 
           {/* BUY / SELL Side Toggle Buttons */}
           <div>
-            <label className="block text-xs uppercase text-slate-500 font-semibold mb-1">Transaction Side</label>
+            <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Transaction Side</label>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setSide('BUY')}
-                className={`py-2.5 px-4 rounded-xl font-bold font-mono text-xs uppercase tracking-wider transition-all border ${
+                className={`py-2.5 px-4 rounded-xl font-bold font-sans text-xs uppercase tracking-wider transition-all border ${
                   side === 'BUY'
-                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-md scale-[1.02]'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm scale-[1.01]'
                     : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                 }`}
               >
@@ -170,9 +170,9 @@ export const ManualOrderModal: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSide('SELL')}
-                className={`py-2.5 px-4 rounded-xl font-bold font-mono text-xs uppercase tracking-wider transition-all border ${
+                className={`py-2.5 px-4 rounded-xl font-bold font-sans text-xs uppercase tracking-wider transition-all border ${
                   side === 'SELL'
-                    ? 'bg-red-600 text-white border-red-600 shadow-md scale-[1.02]'
+                    ? 'bg-rose-600 text-white border-rose-600 shadow-sm scale-[1.01]'
                     : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                 }`}
               >
@@ -183,7 +183,7 @@ export const ManualOrderModal: React.FC = () => {
 
           {/* Instrument Search Autocomplete */}
           <div className="relative">
-            <label className="block text-xs uppercase text-slate-500 font-semibold mb-1">Symbol Search (Angel One OpenAPI)</label>
+            <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Symbol Search (SmartAPI)</label>
             <div className="relative">
               <input
                 type="text"
@@ -195,27 +195,27 @@ export const ManualOrderModal: React.FC = () => {
                 onFocus={() => searchQuery.length >= 2 && setShowDropdown(true)}
                 placeholder="Search symbol (e.g., NIFTY, BANKNIFTY, RELIANCE, NIFTY26SEP2424850CE)..."
                 required
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-2.5 text-xs text-slate-900 font-mono font-bold uppercase focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-2.5 text-xs text-slate-900 font-mono-num font-bold uppercase focus:outline-none focus:border-blue-600"
               />
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-              {isSearching && <RefreshCw className="w-4 h-4 text-emerald-600 animate-spin absolute right-3 top-3" />}
+              {isSearching && <RefreshCw className="w-4 h-4 text-blue-600 animate-spin absolute right-3 top-3" />}
             </div>
 
             {/* Dropdown search results */}
             {showDropdown && searchResults.length > 0 && (
-              <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+              <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-48 overflow-y-auto custom-scrollbar">
                 {searchResults.map((inst, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => handleSelectInstrument(inst)}
-                    className="w-full px-3.5 py-2 text-left hover:bg-emerald-50 border-b border-slate-100 last:border-b-0 flex items-center justify-between text-xs font-mono"
+                    className="w-full px-3.5 py-2.5 text-left hover:bg-blue-50/60 border-b border-slate-100 last:border-b-0 flex items-center justify-between text-xs font-sans"
                   >
                     <div>
                       <span className="font-bold text-slate-900">{inst.symbol}</span>
-                      <span className="text-[10px] text-slate-500 ml-2">({inst.exchange})</span>
+                      <span className="text-[10px] text-slate-500 ml-2 font-mono">({inst.exchange})</span>
                     </div>
-                    <span className="text-[10px] font-semibold text-slate-600">Lot: {inst.lotsize || 1}</span>
+                    <span className="text-[10px] font-semibold text-slate-600 font-mono-num">Lot: {inst.lotsize || 1}</span>
                   </button>
                 ))}
               </div>
@@ -225,11 +225,11 @@ export const ManualOrderModal: React.FC = () => {
           {/* Order Type & Product Type */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs uppercase text-slate-500 font-semibold mb-1">Order Type</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Order Type</label>
               <select
                 value={orderType}
                 onChange={(e) => setOrderType(e.target.value as 'MARKET' | 'LIMIT')}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono font-semibold focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-sans font-bold focus:outline-none focus:border-blue-600"
               >
                 <option value="MARKET">MARKET</option>
                 <option value="LIMIT">LIMIT</option>
@@ -237,13 +237,13 @@ export const ManualOrderModal: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs uppercase text-slate-500 font-semibold mb-1">Product Type</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Product Type</label>
               <select
                 value={productType}
                 onChange={(e) => setProductType(e.target.value as any)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono font-semibold focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-sans font-bold focus:outline-none focus:border-blue-600"
               >
-                <option value="CARRYFORWARD">CARRYFORWARD (Options/Fut)</option>
+                <option value="CARRYFORWARD">CARRYFORWARD (NRML)</option>
                 <option value="INTRADAY">INTRADAY (MIS)</option>
                 <option value="DELIVERY">DELIVERY (CNC)</option>
               </select>
@@ -253,8 +253,8 @@ export const ManualOrderModal: React.FC = () => {
           {/* Quantity & Lot Multipliers */}
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="block text-xs uppercase text-slate-500 font-semibold">Quantity (Units)</label>
-              <span className="text-[11px] text-slate-500 font-mono font-semibold">Lot Size: {lotSize}</span>
+              <label className="block text-xs uppercase text-slate-500 font-bold tracking-wider">Quantity (Units)</label>
+              <span className="text-[11px] text-slate-500 font-mono-num font-semibold">Lot Size: {lotSize}</span>
             </div>
             <input
               type="number"
@@ -262,17 +262,17 @@ export const ManualOrderModal: React.FC = () => {
               onChange={(e) => setQuantity(parseInt(e.target.value, 10) || 0)}
               min={1}
               required
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono font-bold focus:outline-none focus:border-[#0F4C3A]"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono-num font-bold focus:outline-none focus:border-blue-600"
             />
             {/* Quick lot buttons */}
-            <div className="flex items-center gap-2 mt-1.5 font-mono text-[11px]">
-              <span className="text-slate-400">Quick Lots:</span>
+            <div className="flex items-center gap-2 mt-1.5 font-mono-num text-[11px]">
+              <span className="text-slate-400 font-sans text-xs">Lots:</span>
               {[1, 2, 5, 10].map((m) => (
                 <button
                   key={m}
                   type="button"
                   onClick={() => handleQuantityMultiplier(m)}
-                  className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 font-semibold"
+                  className="px-2 py-0.5 rounded-lg bg-slate-100 border border-slate-200 hover:bg-blue-50 hover:border-blue-200 text-slate-700 font-bold"
                 >
                   {m}x ({lotSize * m})
                 </button>
@@ -283,7 +283,7 @@ export const ManualOrderModal: React.FC = () => {
           {/* Price (If LIMIT order) */}
           {orderType === 'LIMIT' && (
             <div>
-              <label className="block text-xs uppercase text-slate-500 font-semibold mb-1">Limit Price (₹)</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Limit Price (₹)</label>
               <input
                 type="number"
                 step="0.05"
@@ -291,7 +291,7 @@ export const ManualOrderModal: React.FC = () => {
                 onChange={(e) => setPrice(parseFloat(e.target.value) || 0.0)}
                 placeholder="0.00"
                 required
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono font-bold focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono-num font-bold focus:outline-none focus:border-blue-600"
               />
             </div>
           )}
@@ -309,15 +309,15 @@ export const ManualOrderModal: React.FC = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`px-6 py-2.5 text-xs font-bold font-mono tracking-wide rounded-xl shadow-md uppercase transition-all flex items-center gap-2 ${
+              className={`px-6 py-2.5 text-xs font-bold font-sans tracking-wider rounded-xl shadow-xs uppercase transition-all flex items-center gap-2 ${
                 side === 'BUY'
                   ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                  : 'bg-red-600 hover:bg-red-700 text-white'
+                  : 'bg-rose-600 hover:bg-rose-700 text-white'
               } ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
               {isSubmitting ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" /> Transmitting to Angel One...
+                  <RefreshCw className="w-4 h-4 animate-spin" /> Transmitting...
                 </>
               ) : (
                 <>

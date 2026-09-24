@@ -26,7 +26,7 @@ export const PositionTable: React.FC<PositionTableProps> = ({ positions }) => {
         <div className="flex justify-end">
           <button
             onClick={() => setConfirmExitAll(true)}
-            className="px-4 py-2 text-xs font-bold bg-loss-bg text-loss hover:bg-loss hover:text-white border border-loss/40 rounded-lg font-mono uppercase tracking-wider transition-all shadow-md flex items-center gap-1.5"
+            className="px-4 py-2 text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white border border-rose-200/80 rounded-xl font-sans uppercase tracking-wider transition-all shadow-xs flex items-center gap-1.5"
           >
             <AlertOctagon className="w-4 h-4" /> Exit All Open Positions ({openPositions.length})
           </button>
@@ -36,48 +36,48 @@ export const PositionTable: React.FC<PositionTableProps> = ({ positions }) => {
       <DataTable>
         <TableHeader>
           <tr>
-            <th className="px-3 py-2 text-left">Account</th>
-            <th className="px-3 py-2 text-left">Symbol</th>
-            <th className="px-3 py-2 text-center">Type</th>
-            <th className="px-3 py-2 text-right">Qty</th>
-            <th className="px-3 py-2 text-right">Avg Price</th>
-            <th className="px-3 py-2 text-right">LTP</th>
-            <th className="px-3 py-2 text-right">P&L (₹)</th>
-            <th className="px-3 py-2 text-right">P&L (%)</th>
-            <th className="px-3 py-2 text-left">Algo Source</th>
-            <th className="px-3 py-2 text-center">Action</th>
+            <th className="px-4 py-3 text-left">Account</th>
+            <th className="px-4 py-3 text-left">Symbol</th>
+            <th className="px-4 py-3 text-center">Type</th>
+            <th className="px-4 py-3 text-right">Qty</th>
+            <th className="px-4 py-3 text-right">Avg Price</th>
+            <th className="px-4 py-3 text-right">LTP</th>
+            <th className="px-4 py-3 text-right">P&L (₹)</th>
+            <th className="px-4 py-3 text-right">P&L (%)</th>
+            <th className="px-4 py-3 text-left">Algo Source</th>
+            <th className="px-4 py-3 text-center">Action</th>
           </tr>
         </TableHeader>
         <tbody>
           {positions.map((pos) => (
-            <TableRow key={pos.id} className={pos.status === 'CLOSED' ? 'opacity-60 bg-gray-900/40' : ''}>
-              <TableCell className="font-medium text-gray-200">{pos.accountName}</TableCell>
-              <TableCell className="font-semibold text-gray-100 font-mono">
+            <TableRow key={pos.id} className={pos.status === 'CLOSED' ? 'opacity-60 bg-slate-50/50' : ''}>
+              <TableCell className="font-bold text-slate-900">{pos.accountName}</TableCell>
+              <TableCell className="font-bold text-slate-900 font-sans">
                 {pos.symbol}
-                <div className="text-[10px] text-gray-400 font-normal">{pos.expiry}</div>
+                <div className="text-[10px] text-slate-400 font-medium font-mono-num">{pos.expiry}</div>
               </TableCell>
               <TableCell className="text-center">
-                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${pos.type === 'CE' ? 'bg-profit-bg text-profit' : 'bg-loss-bg text-loss'}`}>
+                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${pos.type === 'CE' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80' : 'bg-rose-50 text-rose-700 border border-rose-200/80'}`}>
                   {pos.type}
                 </span>
               </TableCell>
-              <TableCell className={`text-right font-bold ${pos.quantity > 0 ? 'text-profit' : pos.quantity < 0 ? 'text-loss' : 'text-gray-400'}`}>
+              <TableCell className={`text-right font-bold font-mono-num ${pos.quantity > 0 ? 'text-emerald-600' : pos.quantity < 0 ? 'text-rose-600' : 'text-slate-400'}`}>
                 {pos.quantity}
               </TableCell>
-              <TableCell className="text-right text-gray-300">₹{pos.averagePrice.toFixed(2)}</TableCell>
-              <TableCell className="text-right text-gray-100 font-bold">₹{pos.ltp.toFixed(2)}</TableCell>
-              <TableCell className={`text-right font-bold ${pos.unrealizedPnL >= 0 ? 'text-profit' : 'text-loss'}`}>
-                ₹{pos.unrealizedPnL.toLocaleString()}
+              <TableCell className="text-right text-slate-700 font-mono-num font-semibold">₹{pos.averagePrice.toFixed(2)}</TableCell>
+              <TableCell className="text-right text-slate-900 font-bold font-mono-num">₹{pos.ltp.toFixed(2)}</TableCell>
+              <TableCell className={`text-right font-bold font-mono-num ${pos.unrealizedPnL >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {pos.unrealizedPnL >= 0 ? '+' : ''}₹{pos.unrealizedPnL.toLocaleString()}
               </TableCell>
-              <TableCell className={`text-right font-bold ${pos.pnlPercent >= 0 ? 'text-profit' : 'text-loss'}`}>
+              <TableCell className={`text-right font-bold font-mono-num ${pos.pnlPercent >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                 {pos.pnlPercent >= 0 ? '+' : ''}{pos.pnlPercent}%
               </TableCell>
-              <TableCell className="text-gray-300 text-xs">{pos.algoName}</TableCell>
+              <TableCell className="text-slate-600 text-xs font-medium">{pos.algoName}</TableCell>
               <TableCell className="text-center">
                 {pos.status === 'OPEN' ? (
                   <button
                     onClick={() => setConfirmExitId(pos.id)}
-                    className="px-2.5 py-1 text-xs font-semibold bg-loss-bg text-loss hover:bg-loss hover:text-white rounded border border-loss/30 transition-colors flex items-center gap-1 mx-auto"
+                    className="px-3 py-1 text-xs font-semibold bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white rounded-lg border border-rose-200/80 transition-colors flex items-center gap-1 mx-auto"
                   >
                     <LogOut className="w-3 h-3" /> Exit
                   </button>

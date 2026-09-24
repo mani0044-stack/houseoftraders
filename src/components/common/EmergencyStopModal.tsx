@@ -18,27 +18,27 @@ export const EmergencyStopModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
-      <div className="bg-white border-2 border-red-500 rounded-xl max-w-lg w-full p-6 shadow-2xl relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-fade-scale">
+      <div className="bg-white border border-rose-200 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative overflow-hidden">
         <button
           onClick={() => setEmergencyStopOpen(false)}
-          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
+          className="absolute top-4 right-4 p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <div className="flex items-center gap-3 text-red-600">
-          <div className="p-3 bg-red-50 rounded-xl border border-red-200">
-            <ShieldAlert className="w-8 h-8 animate-pulse" />
+        <div className="flex items-center gap-3 text-rose-600">
+          <div className="p-3 bg-rose-50 rounded-2xl border border-rose-100 shrink-0">
+            <ShieldAlert className="w-7 h-7 text-rose-600 animate-pulse" />
           </div>
           <div>
-            <h2 className="text-xl font-bold tracking-wide uppercase text-slate-900">EMERGENCY STOP ALL TRADING</h2>
-            <p className="text-xs font-mono text-red-600 font-semibold">GLOBAL SYSTEM KILL SWITCH</p>
+            <h2 className="text-lg font-bold text-slate-900 tracking-tight uppercase">EMERGENCY STOP ALL TRADING</h2>
+            <p className="text-xs font-mono text-rose-600 font-semibold">GLOBAL SYSTEM KILL SWITCH</p>
           </div>
         </div>
 
-        <div className="mt-4 p-4 rounded-lg bg-red-50 border border-red-200 space-y-2 text-sm text-slate-800">
-          <p className="font-semibold text-red-700">Executing this action will immediately:</p>
+        <div className="mt-4 p-4 rounded-xl bg-rose-50/70 border border-rose-100 space-y-2 text-sm text-slate-800">
+          <p className="font-semibold text-rose-800">Executing this action will immediately:</p>
           <ul className="list-disc list-inside space-y-1 text-xs text-slate-700">
             <li>Stop ALL active algorithms across ALL connected Angel One accounts.</li>
             <li>Cancel ALL pending and open market orders across brokers.</li>
@@ -51,14 +51,14 @@ export const EmergencyStopModal: React.FC = () => {
           <button
             type="button"
             onClick={() => setEmergencyStopOpen(false)}
-            className="px-5 py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900 bg-slate-100 border border-slate-200 rounded-lg transition-colors"
+            className="px-4 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 rounded-xl transition-colors"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleConfirm}
-            className="px-6 py-2.5 text-sm font-bold bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all shadow-md uppercase tracking-wide"
+            className="px-5 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-xl transition-all shadow-sm uppercase tracking-wide"
           >
             CONFIRM EMERGENCY STOP ALL
           </button>

@@ -16,13 +16,13 @@ export const ConnectionStatusPill: React.FC<ConnectionStatusPillProps> = ({
   return (
     <div
       className={clsx(
-        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono border transition-colors',
+        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono border transition-colors font-medium',
         connected
-          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-          : 'bg-red-50 text-red-700 border-red-200'
+          ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+          : 'bg-rose-50 text-rose-700 border-rose-200/80'
       )}
     >
-      {connected ? <Wifi className="w-3 h-3 animate-pulse" /> : <WifiOff className="w-3 h-3" />}
+      {connected ? <Wifi className="w-3 h-3 text-emerald-600" /> : <WifiOff className="w-3 h-3" />}
       <span>{label}: {connected ? `${latencyMs}ms` : 'Disconnected'}</span>
     </div>
   );

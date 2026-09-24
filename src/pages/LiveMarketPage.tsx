@@ -57,28 +57,28 @@ export const LiveMarketPage: React.FC = () => {
   }, [currentLtp]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-[1600px] mx-auto pb-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Live Market Terminal</h1>
-          <p className="text-xs text-slate-500 font-mono mt-0.5">Real-time Tick Quotes & Interactive Technical Analysis</p>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight font-sans">Live Market Terminal</h1>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">Real-time Quotes & Interactive Chart Analysis</p>
         </div>
 
         {/* Engine Switcher */}
-        <div className="bg-slate-100 p-1 rounded-xl border border-slate-200 flex items-center gap-1 font-mono text-xs">
+        <div className="bg-white p-1 rounded-xl border border-slate-200/90 shadow-xs flex items-center gap-1 font-sans text-xs">
           <button
             onClick={() => setChartEngine('tradingview')}
             className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-semibold transition-all ${
-              chartEngine === 'tradingview' ? 'bg-[#0F4C3A] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              chartEngine === 'tradingview' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <BarChart2 className="w-3.5 h-3.5" />
-            <span>TradingView Live</span>
+            <span>TradingView Pro</span>
           </button>
           <button
             onClick={() => setChartEngine('algoengine')}
             className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-semibold transition-all ${
-              chartEngine === 'algoengine' ? 'bg-[#0F4C3A] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              chartEngine === 'algoengine' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <LineChart className="w-3.5 h-3.5" />
@@ -100,7 +100,7 @@ export const LiveMarketPage: React.FC = () => {
       </div>
 
       {/* Main Interactive Candlestick Chart */}
-      <div className="h-[560px]">
+      <div className="h-[580px]">
         {chartEngine === 'tradingview' ? (
           <TradingViewChart symbol={selectedSymbol} timeframe={timeframe} height="100%" />
         ) : (

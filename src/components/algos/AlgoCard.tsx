@@ -56,33 +56,33 @@ export const AlgoCard: React.FC<AlgoCardProps> = ({ algo, onEdit }) => {
 
   return (
     <>
-      <div className="bg-white border border-slate-200 rounded-xl p-5 hover:border-slate-300 hover:shadow-md transition-all flex flex-col justify-between">
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-5 hover:border-slate-300 hover:shadow-md transition-all flex flex-col justify-between group">
         <div>
           {/* Header */}
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between gap-2">
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base text-slate-900 tracking-tight">{algo.name}</h3>
+                <h3 className="font-bold text-base text-slate-900 tracking-tight font-sans">{algo.name}</h3>
                 <StatusBadge status={algo.status} size="sm" />
               </div>
-              <p className="text-xs text-slate-500 mt-1 line-clamp-1">{algo.description}</p>
+              <p className="text-xs text-slate-500 font-medium mt-1 line-clamp-1">{algo.description}</p>
             </div>
 
-            <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[11px] font-mono text-[#0F4C3A]">
-              <Layers className="w-3 h-3" />
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200/80 text-[11px] font-semibold text-blue-700 shrink-0 font-mono-num">
+              <Layers className="w-3 h-3 text-blue-600" />
               <span>{algo.underlying}</span>
             </div>
           </div>
 
           {/* Strategy Meta Pills */}
-          <div className="mt-3 flex flex-wrap gap-1.5 text-[10px] font-mono">
-            <span className="px-2 py-0.5 rounded bg-emerald-50 text-[#0F4C3A] font-semibold border border-emerald-200">
+          <div className="mt-3 flex flex-wrap gap-1.5 text-[10px] font-sans">
+            <span className="px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 font-bold border border-blue-200/80">
               {algo.strategyType}
             </span>
-            <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-semibold border border-slate-200">
               Mode: {algo.mode}
             </span>
-            <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-semibold border border-slate-200">
               Expiry: {algo.expiryType}
             </span>
           </div>
@@ -90,14 +90,14 @@ export const AlgoCard: React.FC<AlgoCardProps> = ({ algo, onEdit }) => {
           {/* Legs Visualization Pills if available */}
           {algo.legs && algo.legs.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1 items-center">
-              <span className="text-[10px] text-slate-400 font-mono">Legs:</span>
+              <span className="text-[10px] text-slate-400 font-semibold">Legs:</span>
               {algo.legs.map((leg, idx) => (
                 <span
                   key={leg.id || idx}
-                  className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${
+                  className={`text-[9px] font-mono-num font-bold px-2 py-0.5 rounded-md border ${
                     leg.action === 'BUY'
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                      : 'bg-red-50 text-red-800 border-red-300'
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200/80'
+                      : 'bg-rose-50 text-rose-800 border-rose-200/80'
                   }`}
                 >
                   {leg.action} {leg.lots}x {leg.strikeSelection} {leg.optionType}
@@ -108,15 +108,15 @@ export const AlgoCard: React.FC<AlgoCardProps> = ({ algo, onEdit }) => {
 
           {/* Financial Metrics */}
           <div className="grid grid-cols-2 gap-3 mt-4">
-            <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-              <span className="text-[10px] uppercase text-slate-500 font-semibold">Today's P&L</span>
-              <p className={`text-sm font-bold font-mono-num mt-0.5 ${algo.todaysPnL >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                ₹{algo.todaysPnL.toLocaleString()}
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+              <span className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">Today's P&L</span>
+              <p className={`text-sm font-bold font-mono-num mt-0.5 ${algo.todaysPnL >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {algo.todaysPnL >= 0 ? '+' : ''}₹{algo.todaysPnL.toLocaleString()}
               </p>
             </div>
 
-            <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-              <span className="text-[10px] uppercase text-slate-500 font-semibold">Trades Today</span>
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+              <span className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">Trades Today</span>
               <p className="text-sm font-bold font-mono-num text-slate-900 mt-0.5">
                 {algo.tradesToday} trades
               </p>
@@ -124,14 +124,14 @@ export const AlgoCard: React.FC<AlgoCardProps> = ({ algo, onEdit }) => {
           </div>
 
           {/* Exposure vs Max Loss */}
-          <div className="mt-3 space-y-1">
-            <div className="flex justify-between text-xs font-mono">
-              <span className="text-slate-500">Current Exposure:</span>
+          <div className="mt-3.5 space-y-1">
+            <div className="flex justify-between text-xs font-mono-num font-medium">
+              <span className="text-slate-500 font-sans text-xs">Current Exposure:</span>
               <span className="text-slate-800">₹{algo.currentExposure.toLocaleString()} / ₹{(algo.maxDailyLoss * 10).toLocaleString()}</span>
             </div>
             <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
               <div
-                className="h-full bg-[#0F4C3A]"
+                className="h-full bg-blue-600"
                 style={{ width: `${Math.min(100, (algo.currentExposure / (algo.maxDailyLoss * 10)) * 100)}%` }}
               />
             </div>
@@ -139,18 +139,18 @@ export const AlgoCard: React.FC<AlgoCardProps> = ({ algo, onEdit }) => {
         </div>
 
         {/* Action Controls */}
-        <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between">
+        <div className="mt-5 pt-3.5 border-t border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-1">
             <button
               onClick={() => setSelectedAlgoForLogs(algo)}
-              className="p-1.5 rounded bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200"
+              className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200 transition-colors"
               title="View Strategy Logs"
             >
               <FileText className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={handleDuplicate}
-              className="p-1.5 rounded bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200"
+              className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200 transition-colors"
               title="Duplicate Strategy"
             >
               <Copy className="w-3.5 h-3.5" />
@@ -158,7 +158,7 @@ export const AlgoCard: React.FC<AlgoCardProps> = ({ algo, onEdit }) => {
             {onEdit && (
               <button
                 onClick={() => onEdit(algo)}
-                className="p-1.5 rounded bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200"
+                className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200 transition-colors"
                 title="Edit Strategy"
               >
                 <Edit className="w-3.5 h-3.5" />
@@ -166,7 +166,7 @@ export const AlgoCard: React.FC<AlgoCardProps> = ({ algo, onEdit }) => {
             )}
             <button
               onClick={() => setIsDeleteModalOpen(true)}
-              className="p-1.5 rounded bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 transition-colors"
+              className="p-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white border border-rose-200/80 transition-colors"
               title="Delete Strategy"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -177,7 +177,7 @@ export const AlgoCard: React.FC<AlgoCardProps> = ({ algo, onEdit }) => {
             <button
               onClick={handleExecuteSignal}
               disabled={isExecuting}
-              className="px-2.5 py-1.5 text-xs font-semibold rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors flex items-center gap-1 shadow-sm"
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-all flex items-center gap-1 shadow-xs"
               title="Transmit Algo Order to Broker"
             >
               <Zap className="w-3.5 h-3.5 fill-current" /> {isExecuting ? 'Sending...' : 'Run Order'}
@@ -186,13 +186,13 @@ export const AlgoCard: React.FC<AlgoCardProps> = ({ algo, onEdit }) => {
               <>
                 <button
                   onClick={() => updateAlgoStatus(algo.id, 'Paused')}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-md bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-500 hover:text-slate-950 transition-colors flex items-center gap-1"
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-500 hover:text-slate-950 transition-colors flex items-center gap-1"
                 >
                   <Pause className="w-3.5 h-3.5" /> Pause
                 </button>
                 <button
                   onClick={() => updateAlgoStatus(algo.id, 'Stopped')}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-md bg-red-50 text-red-700 border border-red-200 hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1"
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-600 hover:text-white transition-colors flex items-center gap-1"
                 >
                   <Square className="w-3.5 h-3.5" /> Stop
                 </button>
@@ -200,15 +200,14 @@ export const AlgoCard: React.FC<AlgoCardProps> = ({ algo, onEdit }) => {
             ) : (
               <button
                 onClick={() => updateAlgoStatus(algo.id, 'Active')}
-                className="px-4 py-1.5 text-xs font-semibold rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-600 hover:text-white transition-colors flex items-center gap-1"
+                className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-600 hover:text-white transition-colors flex items-center gap-1"
               >
-                <Play className="w-3.5 h-3.5" /> Start Strategy
+                <Play className="w-3.5 h-3.5" /> Start
               </button>
             )}
           </div>
         </div>
       </div>
-
 
       {/* Delete Confirmation Modal */}
       <ConfirmationModal

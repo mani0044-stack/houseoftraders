@@ -76,34 +76,34 @@ export const OptionChainPage: React.FC = () => {
   }, [rows, strikeRange]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-[1600px] mx-auto pb-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Professional Options Chain</h1>
-          <p className="text-xs text-slate-500 font-mono mt-0.5">
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight font-sans">Professional Option Chain</h1>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
             Real-time Strike Matrix, Open Interest, IV & Option Greeks
           </p>
         </div>
 
         {spotQuote && (
-          <div className="px-3.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-mono text-[#0F4C3A]">
-            <span className="text-slate-600 font-semibold">{underlying} SPOT:</span>{' '}
-            <strong className={spotQuote.change >= 0 ? 'text-emerald-700' : 'text-red-600'}>
-              {spotQuote.ltp.toFixed(2)} ({spotQuote.change >= 0 ? '+' : ''}{spotQuote.changePercent}%)
+          <div className="px-3.5 py-1.5 rounded-xl bg-blue-50 border border-blue-200/80 text-xs font-mono-num text-blue-900">
+            <span className="text-slate-500 font-semibold">{underlying} SPOT:</span>{' '}
+            <strong className={spotQuote.change >= 0 ? 'text-emerald-600' : 'text-rose-600'}>
+              ₹{spotQuote.ltp.toFixed(2)} ({spotQuote.change >= 0 ? '+' : ''}{spotQuote.changePercent}%)
             </strong>
           </div>
         )}
       </div>
 
       {/* Top Controls Bar */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-xs">
-        <div className="flex flex-wrap items-center gap-3 text-xs font-mono">
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-xs">
+        <div className="flex flex-wrap items-center gap-3 text-xs font-sans">
           <div>
-            <label className="block text-[10px] uppercase text-slate-500 font-semibold mb-1">Underlying</label>
+            <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Underlying</label>
             <select
               value={underlying}
               onChange={(e) => setUnderlying(e.target.value as UnderlyingSymbol)}
-              className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 outline-none cursor-pointer hover:border-slate-300"
+              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-slate-800 font-semibold outline-none cursor-pointer hover:border-slate-300"
             >
               <option value="NIFTY">NIFTY</option>
               <option value="BANKNIFTY">BANKNIFTY</option>
@@ -112,11 +112,11 @@ export const OptionChainPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-[10px] uppercase text-slate-500 font-semibold mb-1">Expiry Date</label>
+            <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Expiry Date</label>
             <select
               value={expiry}
               onChange={(e) => setExpiry(e.target.value)}
-              className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 outline-none cursor-pointer hover:border-slate-300"
+              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-slate-800 font-semibold outline-none cursor-pointer hover:border-slate-300"
             >
               <option value="26 SEP 2024">26 SEP 2024 (Weekly)</option>
               <option value="03 OCT 2024">03 OCT 2024 (Weekly)</option>
@@ -125,11 +125,11 @@ export const OptionChainPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-[10px] uppercase text-slate-500 font-semibold mb-1">Strike Filter</label>
+            <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Strike Filter</label>
             <select
               value={strikeRange}
               onChange={(e) => setStrikeRange(e.target.value)}
-              className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 outline-none cursor-pointer hover:border-slate-300"
+              className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-slate-800 font-semibold outline-none cursor-pointer hover:border-slate-300"
             >
               <option value="All">All Strikes (±15)</option>
               <option value="Near ATM 10">Near ATM (±10)</option>
@@ -141,9 +141,9 @@ export const OptionChainPage: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowTvChart(!showTvChart)}
-            className={`px-3.5 py-2 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors border ${
+            className={`px-3.5 py-2 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-all border ${
               showTvChart
-                ? 'bg-[#0F4C3A] text-white border-[#0F4C3A]'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
                 : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
             }`}
           >
@@ -155,7 +155,7 @@ export const OptionChainPage: React.FC = () => {
           <button
             onClick={fetchChain}
             disabled={loading}
-            className="px-4 py-2 text-xs font-semibold bg-[#0F4C3A] hover:bg-[#0A3A2A] text-white rounded-lg flex items-center gap-1.5 transition-colors shadow-xs"
+            className="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center gap-1.5 transition-all shadow-xs"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
@@ -165,7 +165,7 @@ export const OptionChainPage: React.FC = () => {
 
       {/* Collapsible TradingView Live Chart Panel */}
       {showTvChart && (
-        <div className="h-[380px] animate-fade-in">
+        <div className="h-[380px] animate-fade-scale">
           <TradingViewChart symbol={underlying} timeframe="5m" height="100%" />
         </div>
       )}

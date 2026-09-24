@@ -80,49 +80,49 @@ export const AddAccountModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
-      <div className="bg-white border border-slate-200 rounded-xl max-w-lg w-full p-6 shadow-2xl relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-fade-scale">
+      <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
         <button
           onClick={() => setAddAccountOpen(false)}
-          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-emerald-50 text-[#0F4C3A] border border-emerald-200">
+          <div className="p-3 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100">
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-900">
+            <h2 className="text-lg font-bold text-slate-900 tracking-tight font-sans">
               {isEditMode ? `Update Credentials: ${editingAccount.name}` : 'Add Angel One Trading Account'}
             </h2>
-            <p className="text-xs text-slate-500 font-mono">
+            <p className="text-xs text-slate-500 font-medium">
               {isEditMode ? 'Re-authenticate or update broker secrets' : 'Secure backend API credential configuration'}
             </p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4 font-sans">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs uppercase text-slate-500 font-medium mb-1">Account Display Name</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Account Display Name</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Primary Angel"
                 required
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-blue-600"
               />
             </div>
 
             <div>
-              <label className="block text-xs uppercase text-slate-500 font-medium mb-1">Broker Name</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Broker Name</label>
               <select
                 value={broker}
                 onChange={(e) => setBroker(e.target.value as BrokerName)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-blue-600"
               >
                 <option value="Angel One">Angel One</option>
               </select>
@@ -131,7 +131,7 @@ export const AddAccountModal: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs uppercase text-slate-500 font-medium mb-1">Broker Client ID</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Broker Client ID</label>
               <input
                 type="text"
                 value={clientId}
@@ -139,29 +139,29 @@ export const AddAccountModal: React.FC = () => {
                 placeholder="e.g. A123456"
                 disabled={isEditMode}
                 required
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-[#0F4C3A] disabled:bg-slate-100 disabled:text-slate-500"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono-num font-bold focus:outline-none focus:border-blue-600 disabled:bg-slate-100 disabled:text-slate-400"
               />
             </div>
 
             <div>
-              <label className="block text-xs uppercase text-slate-500 font-medium mb-1">Account PIN (MPIN)</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Account PIN (MPIN)</label>
               <input
                 type="password"
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
                 placeholder={isEditMode ? "Leave blank to keep unchanged" : "4-digit MPIN"}
                 required={!isEditMode}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono-num focus:outline-none focus:border-blue-600"
               />
             </div>
           </div>
 
           {/* Secure Backend Note */}
-          <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 flex items-start gap-2 text-xs text-slate-700">
-            <Lock className="w-4 h-4 text-[#0F4C3A] shrink-0 mt-0.5" />
+          <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200/80 flex items-start gap-2.5 text-xs text-slate-700">
+            <Lock className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
             <div>
-              <span className="font-semibold text-[#0F4C3A]">Zero Frontend Secret Exposure:</span>
-              <p className="text-[11px] text-slate-600 mt-0.5">
+              <span className="font-bold text-blue-900">Zero Frontend Secret Exposure:</span>
+              <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed font-medium">
                 API Keys, TOTP Secrets, & PINs are sent directly over encrypted TLS to the backend API vault. They are never stored in localStorage or rendered in the DOM.
               </p>
             </div>
@@ -169,34 +169,34 @@ export const AddAccountModal: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs uppercase text-slate-500 font-medium mb-1">SmartAPI Key</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">SmartAPI Key</label>
               <input
                 type="password"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder={isEditMode ? "Leave blank to keep unchanged" : "SmartAPI App Key"}
                 required={!isEditMode}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono-num focus:outline-none focus:border-blue-600"
               />
             </div>
 
             <div>
-              <label className="block text-xs uppercase text-slate-500 font-medium mb-1">TOTP Secret Key</label>
+              <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">TOTP Secret Key</label>
               <input
                 type="password"
                 value={totpSecret}
                 onChange={(e) => setTotpSecret(e.target.value)}
                 placeholder={isEditMode ? "Leave blank to keep unchanged" : "Base32 TOTP Key"}
                 required={!isEditMode}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-[#0F4C3A]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono-num focus:outline-none focus:border-blue-600"
               />
             </div>
           </div>
 
-          <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600 flex items-start gap-1.5">
-            <HelpCircle className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-            <span>
-              <strong>Troubleshooting Authentication:</strong> The TOTP Secret key must be a valid Base32 string (letters A-Z, numbers 2-7) from your Angel One SmartAPI 2FA setup on smartapi.angelone.in. You can also paste the full <code>otpauth://</code> link.
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-600 flex items-start gap-2">
+            <HelpCircle className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+            <span className="font-medium leading-relaxed">
+              <strong className="text-slate-800">Troubleshooting Authentication:</strong> The TOTP Secret key must be a valid Base32 string from your Angel One SmartAPI 2FA setup.
             </span>
           </div>
 
@@ -204,14 +204,14 @@ export const AddAccountModal: React.FC = () => {
             <button
               type="button"
               onClick={() => setAddAccountOpen(false)}
-              className="px-4 py-2 text-xs font-medium text-slate-700 hover:text-slate-900 bg-slate-100 border border-slate-200 rounded-lg"
+              className="px-4 py-2.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 border border-slate-200 rounded-xl transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2 text-xs font-semibold bg-[#0F4C3A] hover:bg-[#0A3A2A] text-white rounded-lg shadow-sm flex items-center gap-1.5"
+              className="px-5 py-2.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xs flex items-center gap-1.5 transition-all"
             >
               {isSubmitting ? (
                 <>

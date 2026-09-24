@@ -62,17 +62,6 @@ export const BacktestForm: React.FC<BacktestFormProps> = ({ onRunBacktest, isLoa
     }
   };
 
-  const handleSelectStrategy = (algoId: string) => {
-    setStrategyId(algoId);
-    const selected = algos.find(a => a.id === algoId);
-    if (selected) {
-      setUnderlying(selected.underlying);
-      if (selected.legs && selected.legs.length > 0) {
-        setLegs(selected.legs);
-      }
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onRunBacktest({
@@ -111,14 +100,14 @@ export const BacktestForm: React.FC<BacktestFormProps> = ({ onRunBacktest, isLoa
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-6">
+    <form onSubmit={handleSubmit} className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-6 font-sans">
       {/* Top Bar: Execution Mode & Quick Presets */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
         <div>
-          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-            <Sliders className="w-4 h-4 text-[#0F4C3A]" /> AlgoTest Strategy Backtest Engine
+          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <Sliders className="w-4 h-4 text-blue-600" /> Strategy Backtest Engine
           </h3>
-          <p className="text-xs text-slate-500 font-mono mt-0.5">
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
             Configure Intraday/Positional trades, Entry/Exit times, OTM 1-15 legs, and Days filter
           </p>
         </div>
@@ -130,34 +119,34 @@ export const BacktestForm: React.FC<BacktestFormProps> = ({ onRunBacktest, isLoa
             onClick={() => setExecutionMode('Intraday')}
             className={`px-4 py-2 rounded-lg transition-all ${
               executionMode === 'Intraday'
-                ? 'bg-[#0F4C3A] text-white shadow-xs'
+                ? 'bg-blue-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            ⚡ Intraday Trade
+            Intraday Trade
           </button>
           <button
             type="button"
             onClick={() => setExecutionMode('Positional')}
             className={`px-4 py-2 rounded-lg transition-all ${
               executionMode === 'Positional'
-                ? 'bg-[#0F4C3A] text-white shadow-xs'
+                ? 'bg-blue-600 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            📅 Positional Trade
+            Positional Trade
           </button>
         </div>
       </div>
 
       {/* Basic Settings Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-mono text-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-sans">
         <div>
-          <label className="block uppercase text-slate-500 font-semibold mb-1">Underlying Asset</label>
+          <label className="block uppercase text-slate-500 font-bold mb-1 tracking-wider">Underlying Asset</label>
           <select
             value={underlying}
             onChange={(e) => setUnderlying(e.target.value as UnderlyingSymbol)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 font-bold focus:outline-none focus:border-[#0F4C3A]"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 font-bold focus:outline-none focus:border-blue-600"
           >
             <option value="NIFTY">NIFTY (Lot Size: 25)</option>
             <option value="BANKNIFTY">BANKNIFTY (Lot Size: 15)</option>
@@ -169,54 +158,54 @@ export const BacktestForm: React.FC<BacktestFormProps> = ({ onRunBacktest, isLoa
         </div>
 
         <div>
-          <label className="block uppercase text-slate-500 font-semibold mb-1 flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5 text-[#0F4C3A]" /> Entry Time
+          <label className="block uppercase text-slate-500 font-bold mb-1 tracking-wider flex items-center gap-1">
+            <Clock className="w-3.5 h-3.5 text-blue-600" /> Entry Time
           </label>
           <input
             type="time"
             value={entryTime}
             onChange={(e) => setEntryTime(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 font-bold focus:outline-none focus:border-[#0F4C3A]"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 font-mono-num font-bold focus:outline-none focus:border-blue-600"
           />
         </div>
 
         <div>
-          <label className="block uppercase text-slate-500 font-semibold mb-1 flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5 text-red-600" /> Exit Time
+          <label className="block uppercase text-slate-500 font-bold mb-1 tracking-wider flex items-center gap-1">
+            <Clock className="w-3.5 h-3.5 text-rose-600" /> Exit Time
           </label>
           <input
             type="time"
             value={exitTime}
             onChange={(e) => setExitTime(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 font-bold focus:outline-none focus:border-[#0F4C3A]"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 font-mono-num font-bold focus:outline-none focus:border-blue-600"
           />
         </div>
 
         <div>
-          <label className="block uppercase text-slate-500 font-semibold mb-1">Starting Capital (₹)</label>
+          <label className="block uppercase text-slate-500 font-bold mb-1 tracking-wider">Starting Capital (₹)</label>
           <input
             type="number"
             value={startingCapital}
             onChange={(e) => setStartingCapital(parseFloat(e.target.value) || 100000)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 font-bold focus:outline-none focus:border-[#0F4C3A]"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 font-mono-num font-bold focus:outline-none focus:border-blue-600"
           />
         </div>
       </div>
 
       {/* Positional Specific Controls */}
       {executionMode === 'Positional' && (
-        <div className="p-4 rounded-xl bg-emerald-50/50 border border-emerald-200/80 space-y-3 font-mono text-xs">
+        <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-200/80 space-y-3 font-sans text-xs">
           <div className="flex items-center justify-between">
-            <span className="font-bold text-[#0F4C3A] uppercase">Positional Holding & Expiry Rules</span>
-            <span className="text-[11px] text-slate-500">Hold positions across multi-day sessions</span>
+            <span className="font-bold text-blue-900 uppercase tracking-wider text-xs">Positional Holding & Expiry Rules</span>
+            <span className="text-[11px] text-slate-500 font-medium">Hold positions across multi-day sessions</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-slate-600 mb-1">Square-Off Mode</label>
+              <label className="block text-blue-800 mb-1 font-semibold">Square-Off Mode</label>
               <select
                 value={positionalExitMode}
                 onChange={(e) => setPositionalExitMode(e.target.value as any)}
-                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-900 font-semibold"
+                className="w-full bg-white border border-blue-200 rounded-lg px-3 py-2 text-slate-900 font-bold"
               >
                 <option value="Hold Till Expiry">Hold Till Expiry Day</option>
                 <option value="DTE Exit">Exit at Specific DTE (Days to Expiry)</option>
@@ -224,14 +213,14 @@ export const BacktestForm: React.FC<BacktestFormProps> = ({ onRunBacktest, isLoa
             </div>
             {positionalExitMode === 'DTE Exit' && (
               <div>
-                <label className="block text-slate-600 mb-1">Exit DTE (0 = Expiry Day)</label>
+                <label className="block text-blue-800 mb-1 font-semibold">Exit DTE (0 = Expiry Day)</label>
                 <input
                   type="number"
                   min={0}
                   max={7}
                   value={positionalExitDTE}
                   onChange={(e) => setPositionalExitDTE(parseInt(e.target.value) || 0)}
-                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-900 font-bold"
+                  className="w-full bg-white border border-blue-200 rounded-lg px-3 py-2 text-slate-900 font-mono-num font-bold"
                 />
               </div>
             )}
@@ -240,10 +229,10 @@ export const BacktestForm: React.FC<BacktestFormProps> = ({ onRunBacktest, isLoa
       )}
 
       {/* Trading Days & Date Range Bar */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 font-mono text-xs">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4.5 bg-slate-50/70 rounded-2xl border border-slate-200/80 text-xs font-sans">
         <div>
-          <label className="block uppercase text-slate-600 font-bold mb-2 flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5 text-[#0F4C3A]" /> Active Trading Days
+          <label className="block uppercase text-slate-600 font-bold mb-2 flex items-center gap-1.5 tracking-wider">
+            <Calendar className="w-3.5 h-3.5 text-blue-600" /> Active Trading Days
           </label>
           <div className="flex flex-wrap items-center gap-2">
             {(['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as const).map((day) => {
@@ -253,10 +242,10 @@ export const BacktestForm: React.FC<BacktestFormProps> = ({ onRunBacktest, isLoa
                   key={day}
                   type="button"
                   onClick={() => toggleDay(day)}
-                  className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                  className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all ${
                     active
-                      ? 'bg-[#0F4C3A] text-white border-[#0F4C3A]'
-                      : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                   }`}
                 >
                   {day}
@@ -268,27 +257,27 @@ export const BacktestForm: React.FC<BacktestFormProps> = ({ onRunBacktest, isLoa
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block uppercase text-slate-500 font-semibold mb-1">Backtest Start Date</label>
+            <label className="block uppercase text-slate-500 font-bold mb-1 tracking-wider">Backtest Start Date</label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-900"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-mono-num font-bold"
             />
           </div>
           <div>
-            <label className="block uppercase text-slate-500 font-semibold mb-1">Backtest End Date</label>
+            <label className="block uppercase text-slate-500 font-bold mb-1 tracking-wider">Backtest End Date</label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-900"
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-mono-num font-bold"
             />
           </div>
         </div>
       </div>
 
-      {/* Option Strategy & Legs Configurator (OTM 1 to 15, ITM 1 to 15, CP) */}
+      {/* Option Strategy & Legs Configurator */}
       <div className="pt-2">
         <OptionStrategyBuilder
           selectedType={strategyType}
@@ -299,28 +288,28 @@ export const BacktestForm: React.FC<BacktestFormProps> = ({ onRunBacktest, isLoa
       </div>
 
       {/* Advanced Overall Strategy Risk & Cost Accordion */}
-      <div className="border border-slate-200 rounded-xl overflow-hidden">
+      <div className="border border-slate-200/90 rounded-2xl overflow-hidden">
         <button
           type="button"
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="w-full px-4 py-3 bg-slate-50 hover:bg-slate-100 flex items-center justify-between font-mono text-xs font-bold text-slate-800"
+          className="w-full px-5 py-3.5 bg-slate-50/80 hover:bg-slate-100/80 flex items-center justify-between text-xs font-bold text-slate-800 transition-colors"
         >
-          <span className="flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4 text-[#0F4C3A]" /> Overall Strategy Risk Management & Friction Costs
+          <span className="flex items-center gap-2 uppercase tracking-wider">
+            <ShieldAlert className="w-4 h-4 text-blue-600" /> Overall Strategy Risk Management & Friction Costs
           </span>
           {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
 
         {showAdvanced && (
-          <div className="p-4 bg-white space-y-4 font-mono text-xs border-t border-slate-200">
+          <div className="p-5 bg-white space-y-4 text-xs font-sans border-t border-slate-100">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block uppercase text-slate-500 font-semibold mb-1">Overall Strategy SL</label>
+                <label className="block uppercase text-slate-500 font-bold mb-1 tracking-wider">Overall Strategy SL</label>
                 <div className="flex gap-2">
                   <select
                     value={overallSLType}
                     onChange={(e) => setOverallSLType(e.target.value as any)}
-                    className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-slate-900 font-semibold"
+                    className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-bold"
                   >
                     <option value="Amount">Amount (₹)</option>
                     <option value="Percentage">Capital (%)</option>
@@ -331,19 +320,19 @@ export const BacktestForm: React.FC<BacktestFormProps> = ({ onRunBacktest, isLoa
                       type="number"
                       value={overallSLValue}
                       onChange={(e) => setOverallSLValue(parseFloat(e.target.value) || 0)}
-                      className="w-24 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-slate-900 font-bold text-center"
+                      className="w-24 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-mono-num font-bold text-center"
                     />
                   )}
                 </div>
               </div>
 
               <div>
-                <label className="block uppercase text-slate-500 font-semibold mb-1">Overall Target Profit</label>
+                <label className="block uppercase text-slate-500 font-bold mb-1 tracking-wider">Overall Target Profit</label>
                 <div className="flex gap-2">
                   <select
                     value={overallTargetType}
                     onChange={(e) => setOverallTargetType(e.target.value as any)}
-                    className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-slate-900 font-semibold"
+                    className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-bold"
                   >
                     <option value="Amount">Amount (₹)</option>
                     <option value="Percentage">Capital (%)</option>
@@ -354,18 +343,18 @@ export const BacktestForm: React.FC<BacktestFormProps> = ({ onRunBacktest, isLoa
                       type="number"
                       value={overallTargetValue}
                       onChange={(e) => setOverallTargetValue(parseFloat(e.target.value) || 0)}
-                      className="w-24 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-slate-900 font-bold text-center"
+                      className="w-24 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-mono-num font-bold text-center"
                     />
                   )}
                 </div>
               </div>
 
               <div>
-                <label className="block uppercase text-slate-500 font-semibold mb-1">Square-Off Logic</label>
+                <label className="block uppercase text-slate-500 font-bold mb-1 tracking-wider">Square-Off Logic</label>
                 <select
                   value={squareOffType}
                   onChange={(e) => setSquareOffType(e.target.value as any)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-slate-900 font-semibold"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-bold"
                 >
                   <option value="Complete Square-Off">Complete Square-Off (Exit All Legs)</option>
                   <option value="Partial Square-Off">Partial Square-Off (Exit Single Leg)</option>
@@ -373,36 +362,36 @@ export const BacktestForm: React.FC<BacktestFormProps> = ({ onRunBacktest, isLoa
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-slate-100">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-3 border-t border-slate-100">
               <div>
-                <label className="block uppercase text-slate-500 font-semibold mb-1">Position Lots</label>
+                <label className="block uppercase text-slate-500 font-bold mb-1 tracking-wider">Position Lots</label>
                 <input
                   type="number"
                   min={1}
                   value={positionSizeLots}
                   onChange={(e) => setPositionSizeLots(parseInt(e.target.value) || 1)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-slate-900 font-bold"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-900 font-mono-num font-bold"
                 />
               </div>
 
               <div>
-                <label className="block uppercase text-slate-500 font-semibold mb-1">Brokerage per Lot (₹)</label>
+                <label className="block uppercase text-slate-500 font-bold mb-1 tracking-wider">Brokerage per Lot (₹)</label>
                 <input
                   type="number"
                   value={brokeragePerLot}
                   onChange={(e) => setBrokeragePerLot(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-slate-900 font-bold"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-900 font-mono-num font-bold"
                 />
               </div>
 
               <div>
-                <label className="block uppercase text-slate-500 font-semibold mb-1">Slippage (%)</label>
+                <label className="block uppercase text-slate-500 font-bold mb-1 tracking-wider">Slippage (%)</label>
                 <input
                   type="number"
                   step="0.05"
                   value={slippagePercent}
                   onChange={(e) => setSlippagePercent(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-slate-900 font-bold"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-slate-900 font-mono-num font-bold"
                 />
               </div>
             </div>
@@ -415,13 +404,12 @@ export const BacktestForm: React.FC<BacktestFormProps> = ({ onRunBacktest, isLoa
         <button
           type="submit"
           disabled={isLoading}
-          className="px-8 py-3 text-xs font-bold bg-[#0F4C3A] hover:bg-[#0A3A2A] text-white rounded-xl shadow-md hover:shadow-lg uppercase tracking-wider flex items-center gap-2 transition-all transform hover:-translate-y-0.5"
+          className="px-8 py-3.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xs uppercase tracking-wider flex items-center gap-2 transition-all"
         >
-          <Play className="w-4 h-4 fill-current text-emerald-400" />
-          <span>{isLoading ? 'Simulating Historical Data...' : 'START ALGOTEST BACKTEST'}</span>
+          <Play className="w-4 h-4 fill-current text-white" />
+          <span>{isLoading ? 'Simulating Historical Data...' : 'START BACKTEST SIMULATION'}</span>
         </button>
       </div>
     </form>
   );
 };
-

@@ -22,25 +22,25 @@ export const OrdersPage: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 max-w-[1600px] mx-auto pb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Orders Management & Audit</h1>
-          <p className="text-xs text-slate-500 font-mono mt-0.5">Live Broker Transmission Logs & Order Timelines</p>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight font-sans">Orders & Execution Book</h1>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">Live Broker Orders Stream, Fills & Rejection Audit</p>
         </div>
       </div>
 
       {/* Tabs Bar */}
-      <div className="flex items-center gap-1 bg-white border border-slate-200 p-1.5 rounded-xl w-fit shadow-xs">
+      <div className="flex items-center gap-1 bg-white border border-slate-200/90 p-1.5 rounded-2xl w-fit shadow-xs">
         {tabs.map((tab) => (
           <button
             key={tab.value}
             onClick={() => setActiveTab(tab.value)}
             className={clsx(
-              'px-3.5 py-1.5 text-xs font-mono font-semibold rounded-lg transition-colors',
+              'px-4 py-2 text-xs font-semibold rounded-xl transition-all',
               activeTab === tab.value
-                ? 'bg-[#0F4C3A] text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
             )}
           >
             {tab.label}

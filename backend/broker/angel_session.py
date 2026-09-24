@@ -2,6 +2,7 @@ import pyotp
 import logging
 from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
+import backend.broker.patch_smartapi  # Apply SmartConnect read-only FS patch
 from SmartApi import SmartConnect
 from backend.engine.instrument_service import instrument_service
 

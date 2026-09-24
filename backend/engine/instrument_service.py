@@ -24,15 +24,23 @@ class InstrumentService:
   def _load_scrip_master(self):
     """Load Scrip Master from local disk cache or download from Angel One servers."""
     try:
-      os.makedirs(CACHE_DIR, exist_ok=True)
+      cache_dir = CACHE_DIR
+      cache_file = CACHE_FILE
+      try:
+        os.makedirs(cache_dir, exist_ok=True)
+      except OSError:
+        import tempfile
+        cache_dir = tempfile.gettempdir()
+        cache_file = os.path.join(cache_dir, "scrip_master.json")
+
       raw_data = None
 
-      if os.path.exists(CACHE_FILE):
-        file_age = os.path.getmtime(CACHE_FILE)
+      if os.path.exists(cache_file):
+        file_age = os.path.getmtime(cache_file)
         # Re-download if file is older than 24 hours or empty
-        if (os.path.getsize(CACHE_FILE) > 1000):
-          logger.info(f"Loading Angel One Scrip Master from local cache: {CACHE_FILE}")
-          with open(CACHE_FILE, "r", encoding="utf-8") as f:
+        if (os.path.getsize(cache_file) > 1000):
+          logger.info(f"Loading Angel One Scrip Master from local cache: {cache_file}")
+          with open(cache_file, "r", encoding="utf-8") as f:
             raw_data = json.load(f)
 
       if not raw_data:
@@ -40,9 +48,12 @@ class InstrumentService:
         resp = requests.get(ANGEL_SCRIP_URL, timeout=15)
         if resp.status_code == 200:
           raw_data = resp.json()
-          with open(CACHE_FILE, "w", encoding="utf-8") as f:
-            json.dump(raw_data, f)
-          logger.info(f"Successfully cached {len(raw_data)} instruments to {CACHE_FILE}")
+          try:
+            with open(cache_file, "w", encoding="utf-8") as f:
+              json.dump(raw_data, f)
+            logger.info(f"Successfully cached {len(raw_data)} instruments to {cache_file}")
+          except OSError as cache_err:
+            logger.warning(f"Could not write cache file to {cache_file} (Read-only FS): {cache_err}")
         else:
           logger.error(f"Failed downloading Scrip Master HTTP {resp.status_code}")
           raw_data = []

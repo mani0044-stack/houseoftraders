@@ -1,9 +1,15 @@
 import axios from 'axios';
 
-const rawApiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+const rawApiUrl =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.PROD ? '/api/v1' : 'http://localhost:8000/api/v1');
 
 const formatBaseUrl = (url: string): string => {
   let cleanUrl = url.trim().replace(/\/+$/, '');
+  if (!cleanUrl.startsWith('/') && !cleanUrl.startsWith('http')) {
+    cleanUrl = `/${cleanUrl}`;
+  }
   if (!cleanUrl.endsWith('/api/v1')) {
     cleanUrl = `${cleanUrl}/api/v1`;
   }

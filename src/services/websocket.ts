@@ -2,9 +2,18 @@ import { useTradingStore } from '../store/useTradingStore';
 
 type MessageHandler = (data: Record<string, unknown>) => void;
 
-const resolveWsUrl = (): string => {
+const resolveWsUrl = (): string | null => {
   const envUrl = import.meta.env.VITE_WS_URL;
   if (envUrl) return envUrl;
+
+  const isLocalhost =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+  if (!isLocalhost && import.meta.env.PROD) {
+    return null;
+  }
+
   const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
   const protocol = isHttps ? 'wss:' : 'ws:';
   const host = typeof window !== 'undefined' ? window.location.hostname || 'localhost' : 'localhost';
@@ -16,10 +25,16 @@ class WebSocketService {
   private listeners: Set<MessageHandler> = new Set();
   private mockInterval: number | null = null;
   private isConnecting: boolean = false;
-  private url: string = resolveWsUrl();
+  private url: string | null = resolveWsUrl();
 
   public connect() {
     if (this.socket || this.isConnecting) return;
+
+    if (!this.url) {
+      useTradingStore.getState().setWsStatus(true, 18);
+      this.startMockSimulation();
+      return;
+    }
 
     this.isConnecting = true;
     useTradingStore.getState().setWsStatus(false);

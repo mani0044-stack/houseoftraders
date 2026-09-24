@@ -1,3 +1,4 @@
+import os
 import asyncio
 import json
 import logging
@@ -31,7 +32,7 @@ app = FastAPI(
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Production setup should restrict to specific origins
+    allow_origin_regex=".*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -109,7 +110,8 @@ async def market_tick_broadcaster():
 
 @app.on_event("startup")
 async def startup_event():
-    asyncio.create_task(market_tick_broadcaster())
+    if not os.getenv("VERCEL"):
+        asyncio.create_task(market_tick_broadcaster())
 
 @app.get("/")
 def root():

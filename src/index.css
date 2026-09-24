@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background-color: #FFFFFF;
+    color: #0F172A;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* Scrollbar styles for light high-density trading terminal */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F8FAFC;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Glassmorphism light panel style */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  border: 1px solid #E2E8F0;
+}
+
+/* Glowing animation for live market status */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Numerical monospace formatting class */
+.font-mono-num {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  font-variant-numeric: tabular-nums;
+}

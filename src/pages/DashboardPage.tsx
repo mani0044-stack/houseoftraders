@@ -1,4 +1,5 @@
 import React from 'react';
+import logoImg from '../assets/logo.png';
 import { MetricCard } from '../components/common/MetricCard';
 import { PnLChart } from '../components/dashboard/PnLChart';
 import { ActiveAlgosTable } from '../components/dashboard/ActiveAlgosTable';
@@ -40,19 +41,22 @@ export const DashboardPage: React.FC = () => {
     <div className="space-y-6 max-w-[1600px] mx-auto pb-6">
       {/* Top Welcome & Market Overview Banner */}
       <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[11px] font-bold uppercase tracking-wider border border-blue-100">
-              {tradingMode} MODE
-            </span>
-            <span className="text-xs text-slate-400 font-medium">• Live Angel SmartAPI Feed</span>
+        <div className="flex items-center gap-4">
+          <img src={logoImg} alt="House of Traders Logo" className="w-12 h-12 object-contain shrink-0" />
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[11px] font-bold uppercase tracking-wider border border-blue-100">
+                {tradingMode} MODE
+              </span>
+              <span className="text-xs text-slate-400 font-medium">• Live Angel SmartAPI Feed</span>
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1 font-sans">
+              House of Traders Terminal
+            </h1>
+            <p className="text-xs text-slate-500 mt-1 font-medium">
+              Multi-Account Options Algorithmic Execution & Portfolio Intelligence
+            </p>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1 font-sans">
-            House of Traders Terminal
-          </h1>
-          <p className="text-xs text-slate-500 mt-1 font-medium">
-            Multi-Account Options Algorithmic Execution & Portfolio Intelligence
-          </p>
         </div>
 
         <div className="flex items-center gap-3 self-start md:self-auto">

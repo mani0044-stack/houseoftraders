@@ -10,6 +10,7 @@ import {
   TrendingDown,
   Menu
 } from 'lucide-react';
+import logoImg from '../../assets/logo.png';
 import { useTradingStore } from '../../store/useTradingStore';
 import { useUIStore } from '../../store/useUIStore';
 import { ConnectionStatusPill } from '../common/ConnectionStatusPill';
@@ -193,9 +194,7 @@ export const Topbar: React.FC = () => {
             onClick={() => setShowProfileMenu(!showProfileMenu)}
             className="flex items-center gap-2 p-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 hover:bg-slate-100 transition-colors"
           >
-            <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-              HT
-            </div>
+            <img src={logoImg} alt="House of Traders Logo" className="w-7 h-7 object-contain rounded-lg shadow-xs" />
             <span className="hidden sm:inline text-xs font-semibold text-slate-800">House of Traders</span>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>

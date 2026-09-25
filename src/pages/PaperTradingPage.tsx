@@ -49,7 +49,7 @@ export const PaperTradingPage: React.FC = () => {
       </div>
 
       {/* KPI Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 font-sans">
         <MetricCard
           title="Virtual Capital"
           value="₹10,00,000"
@@ -58,24 +58,24 @@ export const PaperTradingPage: React.FC = () => {
         />
         <MetricCard
           title="Paper P&L"
-          value="₹34,850"
-          valueColor="profit"
-          change={3.48}
+          value={`₹${algos.filter((a) => a.mode === 'Paper').reduce((acc, a) => acc + a.todaysPnL, 0).toLocaleString()}`}
+          valueColor={algos.filter((a) => a.mode === 'Paper').reduce((acc, a) => acc + a.todaysPnL, 0) >= 0 ? "profit" : "loss"}
         />
         <MetricCard
           title="Paper Trades"
-          value="42"
+          value={algos.filter((a) => a.mode === 'Paper').reduce((acc, a) => acc + a.tradesToday, 0)}
           subtext="Simulated Executions"
         />
         <MetricCard
-          title="Sandbox Win Rate"
-          value="68%"
-          valueColor="profit"
+          title="Paper Algos"
+          value={algos.filter((a) => a.mode === 'Paper').length}
+          valueColor="brand"
+          subtext="Active Sandbox Spreads"
         />
         <MetricCard
           title="Paper Drawdown"
-          value="₹4,200"
-          valueColor="loss"
+          value="₹0"
+          valueColor="neutral"
         />
       </div>
 

@@ -1,25 +1,28 @@
 import React, { useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { clsx } from 'clsx';
-
-const mockIntradayPnL = [
-  { time: '09:15', pnl: 0, cumulative: 0 },
-  { time: '09:45', pnl: 1400, cumulative: 1400 },
-  { time: '10:30', pnl: -800, cumulative: 600 },
-  { time: '11:15', pnl: 4200, cumulative: 4800 },
-  { time: '12:00', pnl: 3100, cumulative: 7900 },
-  { time: '12:45', pnl: 2500, cumulative: 10400 },
-  { time: '13:30', pnl: -1200, cumulative: 9200 },
-  { time: '14:15', pnl: 6800, cumulative: 16000 },
-  { time: '15:00', pnl: 4500, cumulative: 20500 },
-  { time: '15:30', pnl: 950, cumulative: 21450 },
-];
+import { useTradingStore } from '../../store/useTradingStore';
 
 export const PnLChart: React.FC = () => {
   const [viewMode, setViewMode] = useState<'cumulative' | 'intraday'>('cumulative');
+  const positions = useTradingStore((s) => s.positions);
+
+  // Generate intraday data points based on actual position P&L or baseline
+  const totalPnL = positions.reduce((acc, p) => acc + (p.unrealizedPnL || 0) + (p.realizedPnL || 0), 0);
+
+  const chartData = positions.length > 0 ? [
+    { time: '09:15', pnl: 0, cumulative: 0 },
+    { time: '12:00', pnl: Math.round(totalPnL * 0.4), cumulative: Math.round(totalPnL * 0.4) },
+    { time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }), pnl: totalPnL, cumulative: totalPnL }
+  ] : [
+    { time: '09:15', pnl: 0, cumulative: 0 },
+    { time: '11:30', pnl: 0, cumulative: 0 },
+    { time: '13:45', pnl: 0, cumulative: 0 },
+    { time: '15:30', pnl: 0, cumulative: 0 },
+  ];
 
   return (
-    <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs flex flex-col h-full">
+    <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs flex flex-col h-full font-sans">
       <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
         <div>
           <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">P&L Performance Curve</h3>
@@ -50,11 +53,11 @@ export const PnLChart: React.FC = () => {
 
       <div className="flex-1 min-h-[260px] pt-4">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={mockIntradayPnL} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#2563EB" stopOpacity={0.2}/>
-                <stop offset="95%" stopColor="#2563EB" stopOpacity={0.0}/>
+                <stop offset="5%" stopColor={totalPnL >= 0 ? "#2563EB" : "#DC2626"} stopOpacity={0.2}/>
+                <stop offset="95%" stopColor={totalPnL >= 0 ? "#2563EB" : "#DC2626"} stopOpacity={0.0}/>
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
@@ -64,7 +67,7 @@ export const PnLChart: React.FC = () => {
               fontSize={11}
               tickLine={false}
               axisLine={false}
-              tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
+              tickFormatter={(v) => `₹${v}`}
             />
             <Tooltip
               contentStyle={{ 
@@ -79,7 +82,7 @@ export const PnLChart: React.FC = () => {
             <Area
               type="monotone"
               dataKey={viewMode === 'cumulative' ? 'cumulative' : 'pnl'}
-              stroke="#2563EB"
+              stroke={totalPnL >= 0 ? "#2563EB" : "#DC2626"}
               strokeWidth={2.5}
               fillOpacity={1}
               fill="url(#pnlGradient)"

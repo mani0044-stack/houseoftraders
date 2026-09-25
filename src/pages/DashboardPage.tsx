@@ -24,6 +24,7 @@ export const DashboardPage: React.FC = () => {
   const accounts = useTradingStore((s) => s.accounts);
   const algos = useTradingStore((s) => s.algos);
   const positions = useTradingStore((s) => s.positions);
+  const riskLimit = useTradingStore((s) => s.riskLimit);
   const wsConnected = useTradingStore((s) => s.wsConnected);
   const wsLatencyMs = useTradingStore((s) => s.wsLatencyMs);
   const tradingMode = useTradingStore((s) => s.tradingMode);
@@ -106,10 +107,10 @@ export const DashboardPage: React.FC = () => {
         />
         <MetricCard
           title="Daily Risk"
-          value="43%"
+          value={`${riskLimit.maxDailyLoss > 0 ? Math.round((riskLimit.currentDailyLoss / riskLimit.maxDailyLoss) * 100) : 0}%`}
           valueColor="neutral"
           icon={ShieldAlert}
-          subtext="Cap: ₹50,000"
+          subtext={`Cap: ₹${riskLimit.maxDailyLoss.toLocaleString()}`}
         />
         <MetricCard
           title="WebSocket"

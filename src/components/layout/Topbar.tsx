@@ -94,9 +94,9 @@ export const Topbar: React.FC = () => {
         {/* Connection Status */}
         <div className="hidden md:flex items-center gap-2">
           <ConnectionStatusPill connected={wsConnected} latencyMs={wsLatencyMs} label="WS" />
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono bg-blue-50 text-blue-700 border border-blue-200/80 font-medium">
+          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-medium border ${backendConnected ? 'bg-blue-50 text-blue-700 border-blue-200/80' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
             <Activity className="w-3 h-3" />
-            <span>API: {backendConnected ? 'OK' : 'MOCK'}</span>
+            <span>API: {backendConnected ? 'OK' : 'DISCONNECTED'}</span>
           </div>
         </div>
 

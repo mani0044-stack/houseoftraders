@@ -56,55 +56,15 @@ export const INITIAL_ORDERS: Order[] = [];
 
 export const INITIAL_RISK_LIMIT: RiskLimit = {
   maxDailyLoss: 50000,
-  currentDailyLoss: 0, // currently net positive +21,500
+  currentDailyLoss: 0,
   maxTotalExposure: 1000000,
-  currentTotalExposure: 515000,
+  currentTotalExposure: 0,
   maxOpenPositions: 10,
-  currentOpenPositions: 4,
+  currentOpenPositions: 0,
   maxTradesPerDay: 50,
-  currentTradesCount: 40,
+  currentTradesCount: 0,
   globalKillSwitchActive: false,
 };
 
-export const INITIAL_ACTIVITY_LOGS: ActivityLogItem[] = [
-  {
-    id: 'log-1',
-    timestamp: '15:29:55 IST',
-    category: 'WebSocket',
-    severity: 'INFO',
-    title: 'Market Feed Heartbeat',
-    message: 'WebSocket ticker active. Latency: 12ms.'
-  },
-  {
-    id: 'log-2',
-    timestamp: '14:22:05 IST',
-    category: 'Order',
-    severity: 'SUCCESS',
-    title: 'Order Executed',
-    message: 'BUY 150 NIFTY24SEP24850CE @ 142.50 executed on Main Angel Alpha.'
-  },
-  {
-    id: 'log-3',
-    timestamp: '14:22:04 IST',
-    category: 'Risk',
-    severity: 'INFO',
-    title: 'Risk Check Approved',
-    message: 'Order for 150 NIFTY24SEP24850CE passed daily exposure and margin limits.'
-  },
-  {
-    id: 'log-4',
-    timestamp: '13:05:40 IST',
-    category: 'Order',
-    severity: 'ERROR',
-    title: 'Order Rejected by Broker',
-    message: 'BUY 30 BANKNIFTY24SEP53400CE rejected: RMS Insufficient margin.'
-  },
-  {
-    id: 'log-5',
-    timestamp: '10:00:00 IST',
-    category: 'Algo',
-    severity: 'SUCCESS',
-    title: 'Algo Started',
-    message: 'NIFTY Momentum Scalper started in LIVE trading mode across 2 accounts.'
-  }
-];
+export const INITIAL_ACTIVITY_LOGS: ActivityLogItem[] = [];
+

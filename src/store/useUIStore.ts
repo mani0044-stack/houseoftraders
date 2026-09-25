@@ -17,6 +17,10 @@ interface UIState {
   toggleSidebar: () => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
 
+  mobileMenuOpen: boolean;
+  toggleMobileMenu: () => void;
+  setMobileMenuOpen: (open: boolean) => void;
+
   // Modals & Drawers
   isAddAccountOpen: boolean;
   editingAccount: TradingAccount | null;
@@ -56,6 +60,10 @@ export const useUIStore = create<UIState>((set) => ({
   sidebarCollapsed: false,
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+
+  mobileMenuOpen: false,
+  toggleMobileMenu: () => set((s) => ({ mobileMenuOpen: !s.mobileMenuOpen })),
+  setMobileMenuOpen: (open) => set({ mobileMenuOpen: open }),
 
   isAddAccountOpen: false,
   editingAccount: null,

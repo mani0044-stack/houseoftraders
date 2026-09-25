@@ -8,9 +8,7 @@ import {
   Zap,
   TrendingUp,
   TrendingDown,
-  Search,
-  User,
-  Shield
+  Menu
 } from 'lucide-react';
 import { useTradingStore } from '../../store/useTradingStore';
 import { useUIStore } from '../../store/useUIStore';
@@ -29,6 +27,7 @@ export const Topbar: React.FC = () => {
   const setLiveModeConfirmOpen = useUIStore((s) => s.setLiveModeConfirmOpen);
   const setManualOrderOpen = useUIStore((s) => s.setManualOrderOpen);
   const setTradingMode = useTradingStore((s) => s.setTradingMode);
+  const toggleMobileMenu = useUIStore((s) => s.toggleMobileMenu);
   const activityLogs = useTradingStore((s) => s.activityLogs);
 
   const [timeStr, setTimeStr] = useState<string>('');
@@ -55,18 +54,25 @@ export const Topbar: React.FC = () => {
   const banknifty = marketQuotes['BANKNIFTY'];
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200/80 flex items-center justify-between px-5 sticky top-0 z-20 shrink-0 shadow-xs">
-      {/* Left: Ticker Summary & Time */}
-      <div className="flex items-center gap-3">
+    <header className="h-16 bg-white border-b border-slate-200/80 flex items-center justify-between px-3 md:px-5 sticky top-0 z-20 shrink-0 shadow-xs">
+      {/* Left: Mobile Menu Toggle & Ticker Summary */}
+      <div className="flex items-center gap-2.5">
+        <button
+          onClick={toggleMobileMenu}
+          className="md:hidden p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 hover:text-slate-900 transition-colors"
+          title="Open Menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
         <div className="flex items-center gap-2">
           {/* NIFTY 50 Pill */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-slate-300 transition-colors">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">NIFTY 50</span>
+          <div className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-slate-300 transition-colors text-xs">
+            <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider">NIFTY</span>
             {nifty && (
-              <span className={`text-xs font-mono-num font-bold flex items-center gap-1 ${nifty.change >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {nifty.ltp.toFixed(2)}
+              <span className={`font-mono-num font-bold flex items-center gap-1 text-xs ${nifty.change >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {nifty.ltp.toFixed(1)}
                 {nifty.change >= 0 ? <TrendingUp className="w-3 h-3 shrink-0" /> : <TrendingDown className="w-3 h-3 shrink-0" />}
-                <span className="text-[11px]">({nifty.change >= 0 ? '+' : ''}{nifty.changePercent}%)</span>
               </span>
             )}
           </div>
@@ -105,9 +111,9 @@ export const Topbar: React.FC = () => {
           <select
             value={selectedAccountId}
             onChange={(e) => setSelectedAccountId(e.target.value)}
-            className="bg-slate-50 hover:bg-slate-100/80 border border-slate-200 text-slate-800 text-xs rounded-xl px-3 py-1.5 font-medium cursor-pointer outline-none transition-colors"
+            className="bg-slate-50 hover:bg-slate-100/80 border border-slate-200 text-slate-800 text-xs rounded-xl px-2.5 sm:px-3 py-1.5 font-medium cursor-pointer outline-none transition-colors max-w-[110px] sm:max-w-none truncate"
           >
-            <option value="ALL">All Angel Accounts</option>
+            <option value="ALL">All Accounts</option>
             {accounts.map((acc) => (
               <option key={acc.id} value={acc.id}>
                 {acc.name} ({acc.clientId})
@@ -116,20 +122,20 @@ export const Topbar: React.FC = () => {
           </select>
         </div>
 
-        {/* Quick Order Button - Sensibull Indigo/Blue Accent */}
+        {/* Quick Order Button */}
         <button
           onClick={() => setManualOrderOpen(true)}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-xs shadow-blue-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-xs shadow-blue-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
           title="Place Quick Order on Angel One"
         >
           <Zap className="w-3.5 h-3.5 fill-current" />
-          <span>PLACE ORDER</span>
+          <span className="hidden sm:inline">ORDER</span>
         </button>
 
         {/* Trading Mode Switcher */}
         <button
           onClick={handleModeToggle}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all shadow-xs ${
+          className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all shadow-xs ${
             tradingMode === 'Live'
               ? 'bg-amber-500 text-slate-950 border-amber-400 hover:bg-amber-600'
               : 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800'
@@ -139,12 +145,12 @@ export const Topbar: React.FC = () => {
           {tradingMode === 'Live' ? (
             <>
               <Zap className="w-3.5 h-3.5 fill-current animate-pulse text-amber-950" />
-              <span>LIVE</span>
+              <span className="hidden sm:inline">LIVE</span>
             </>
           ) : (
             <>
               <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-              <span>PAPER</span>
+              <span className="hidden sm:inline">PAPER</span>
             </>
           )}
         </button>

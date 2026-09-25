@@ -1,11 +1,17 @@
 @import "tailwindcss";
 
 @layer base {
+  :root {
+    --font-serif: 'Bodoni Moda', Didot, Georgia, serif;
+    --font-script: 'Pinyon Script', cursive;
+    --font-sans: 'Montserrat', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
   body {
     background-color: #F7F8FA;
     color: #111827;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -15,6 +21,29 @@
     outline: 2px solid #2563EB;
     outline-offset: 2px;
   }
+}
+
+/* Editorial Modern High-End Typography Utilities */
+.font-editorial-heading {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+}
+
+.font-editorial-accent {
+  font-family: var(--font-script);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.font-editorial-label {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.25em; /* tracking-widest */
 }
 
 /* Custom Premium Scrollbar */

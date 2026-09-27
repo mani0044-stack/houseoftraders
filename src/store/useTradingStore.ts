@@ -113,7 +113,11 @@ export const useTradingStore = create<TradingState>((set, get) => ({
   fetchAccounts: async () => {
     try {
       const data = await accountsApi.getAccounts();
-      set({ accounts: data, backendConnected: true });
+      if (Array.isArray(data)) {
+        set({ accounts: data, backendConnected: true });
+      } else {
+        set({ backendConnected: true });
+      }
     } catch {
       set({ backendConnected: false });
     }
@@ -122,7 +126,7 @@ export const useTradingStore = create<TradingState>((set, get) => ({
   fetchAlgos: async () => {
     try {
       const remoteAlgos = await algosApi.getAlgos();
-      if (remoteAlgos && remoteAlgos.length > 0) {
+      if (Array.isArray(remoteAlgos) && remoteAlgos.length > 0) {
         set((state) => {
           const map = new Map<string, Algorithm>();
           // Remote algos from backend
@@ -142,7 +146,9 @@ export const useTradingStore = create<TradingState>((set, get) => ({
   fetchPositions: async () => {
     try {
       const data = await positionsApi.getPositions();
-      set({ positions: data });
+      if (Array.isArray(data)) {
+        set({ positions: data });
+      }
     } catch (err) {
       console.error("Failed fetching positions:", err);
     }
@@ -151,7 +157,9 @@ export const useTradingStore = create<TradingState>((set, get) => ({
   fetchOrders: async () => {
     try {
       const data = await ordersApi.getOrders();
-      set({ orders: data });
+      if (Array.isArray(data)) {
+        set({ orders: data });
+      }
     } catch (err) {
       console.error("Failed fetching orders:", err);
     }

@@ -63,17 +63,20 @@ export const Sidebar: React.FC = () => {
       {/* Brand Header */}
       <div className="h-20 border-b border-[#0f443c]/60 flex items-center justify-between px-4 z-10">
         <NavLink to="/" onClick={() => isMobile && setMobileMenuOpen(false)} className="flex items-center gap-3 overflow-hidden group">
-          {/* Stylized Logo Emblem */}
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0d483d] to-[#08332c] border border-[#10b981]/30 flex items-center justify-center shrink-0 shadow-sm group-hover:border-[#10b981]/60 transition-all">
-            <span className="font-serif font-bold text-lg text-white tracking-tighter">HT</span>
+          {/* Brand Monogram Icon matching reference screenshot */}
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0e4a40] to-[#072b25] border border-[#10b981]/40 flex items-center justify-center shrink-0 shadow-sm group-hover:border-[#10b981] group-hover:scale-105 transition-all">
+            <svg className="w-6 h-6 text-[#2dd4bf]" viewBox="0 0 32 32" fill="none" stroke="currentColor">
+              <path d="M6 6H12M9 6V26M6 26H12M9 16H21M18 6H26M21 6V26M18 26H24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M25 6H31M28 6V26M25 26H31" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </div>
           {(!sidebarCollapsed || isMobile) && (
-            <div className="flex flex-col min-w-0">
-              <span className="font-serif font-bold tracking-wider text-white text-xs leading-tight uppercase truncate">
-                HOUSE OF TRADER
+            <div className="flex flex-col font-serif leading-none min-w-0 select-none">
+              <span className="text-[10px] font-semibold tracking-[0.2em] text-[#a2c4bc] uppercase truncate">
+                HOUSE OF
               </span>
-              <span className="text-[10px] text-[#10b981] font-sans font-semibold tracking-widest uppercase mt-0.5">
-                Pro Terminal
+              <span className="text-[14px] font-bold tracking-[0.22em] text-white uppercase mt-1 truncate">
+                TRADER
               </span>
             </div>
           )}

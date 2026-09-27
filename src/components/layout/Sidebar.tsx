@@ -51,17 +51,28 @@ export const Sidebar: React.FC = () => {
   const setEmergencyStopOpen = useUIStore((s) => s.setEmergencyStopOpen);
 
   const navContent = (isMobile: boolean = false) => (
-    <div className="flex flex-col h-full justify-between select-none">
+    <div className="flex flex-col h-full justify-between select-none relative overflow-hidden">
+      {/* Subtle Background Pattern Graphic */}
+      <div 
+        className="absolute inset-0 pointer-events-none opacity-5 bg-no-repeat bg-bottom" 
+        style={{
+          backgroundImage: `radial-gradient(circle at 10% 90%, #10b981 0%, transparent 60%)`
+        }} 
+      />
+
       {/* Brand Header */}
-      <div className="h-16 border-b border-slate-100 flex items-center justify-between px-3.5">
-        <NavLink to="/" onClick={() => isMobile && setMobileMenuOpen(false)} className="flex items-center gap-2.5 overflow-hidden group">
-          <img src={logoImg} alt="House of Traders Logo" className="w-9 h-9 object-contain shrink-0 group-hover:scale-105 transition-transform" />
+      <div className="h-20 border-b border-[#0f443c]/60 flex items-center justify-between px-4 z-10">
+        <NavLink to="/" onClick={() => isMobile && setMobileMenuOpen(false)} className="flex items-center gap-3 overflow-hidden group">
+          {/* Stylized Logo Emblem */}
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0d483d] to-[#08332c] border border-[#10b981]/30 flex items-center justify-center shrink-0 shadow-sm group-hover:border-[#10b981]/60 transition-all">
+            <span className="font-serif font-bold text-lg text-white tracking-tighter">HT</span>
+          </div>
           {(!sidebarCollapsed || isMobile) && (
             <div className="flex flex-col min-w-0">
-              <span className="font-bold tracking-tight text-slate-900 text-sm leading-tight font-sans truncate">
-                HOUSE OF TRADERS
+              <span className="font-serif font-bold tracking-wider text-white text-xs leading-tight uppercase truncate">
+                HOUSE OF TRADER
               </span>
-              <span className="text-[10px] text-blue-600 font-semibold tracking-wider uppercase mt-0.5">
+              <span className="text-[10px] text-[#10b981] font-sans font-semibold tracking-widest uppercase mt-0.5">
                 Pro Terminal
               </span>
             </div>
@@ -71,14 +82,14 @@ export const Sidebar: React.FC = () => {
         {isMobile ? (
           <button
             onClick={() => setMobileMenuOpen(false)}
-            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-[#0b3a33] text-[#7aa69e] hover:text-white transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         ) : (
           <button
             onClick={toggleSidebar}
-            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-[#0b3a33] text-[#7aa69e] hover:text-white transition-colors"
             title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
             {sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -87,7 +98,7 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Navigation List */}
-      <nav className="flex-1 overflow-y-auto p-2.5 space-y-1 custom-scrollbar">
+      <nav className="flex-1 overflow-y-auto p-3 space-y-1.5 custom-scrollbar z-10">
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
@@ -97,41 +108,53 @@ export const Sidebar: React.FC = () => {
               onClick={() => isMobile && setMobileMenuOpen(false)}
               className={({ isActive }) =>
                 clsx(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all group relative',
+                  'flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-xs transition-all group relative font-sans',
                   isActive
-                    ? 'bg-blue-50/80 text-blue-700 font-semibold shadow-xs border-r-2 border-blue-600'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50',
-                  item.highlight && !isActive && 'text-amber-600 hover:text-amber-700 hover:bg-amber-50/60'
+                    ? 'bg-[#0d483d] text-white font-semibold shadow-sm border-l-2 border-[#10b981]'
+                    : 'text-[#7aa69e] hover:text-white hover:bg-[#0b3a33]/70 font-medium',
+                  item.highlight && !isActive && 'text-amber-400 hover:text-amber-300 hover:bg-[#0b3a33]'
                 )
               }
               title={sidebarCollapsed && !isMobile ? item.label : undefined}
             >
-              <Icon className="w-4 h-4 shrink-0 transition-transform group-hover:scale-110" />
-              {(!sidebarCollapsed || isMobile) && <span className="truncate">{item.label}</span>}
-              {sidebarCollapsed && !isMobile && (
-                <div className="absolute left-full ml-2 px-2.5 py-1 bg-slate-900 text-white text-xs font-sans rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                  {item.label}
-                </div>
+              {({ isActive }) => (
+                <>
+                  <Icon className={clsx("w-4 h-4 shrink-0 transition-transform group-hover:scale-110", isActive ? "text-[#10b981]" : "text-[#7aa69e] group-hover:text-white")} />
+                  {(!sidebarCollapsed || isMobile) && <span className="truncate">{item.label}</span>}
+                  {sidebarCollapsed && !isMobile && (
+                    <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#031714] text-white text-xs font-sans rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-[#0d483d]">
+                      {item.label}
+                    </div>
+                  )}
+                </>
               )}
             </NavLink>
           );
         })}
       </nav>
 
-      {/* Bottom Emergency Button */}
-      <div className="p-2.5 border-t border-slate-100 bg-slate-50/50">
+      {/* Bottom Tagline & Emergency Button */}
+      <div className="p-3 border-t border-[#0f443c]/60 bg-[#041e1a]/80 z-10 space-y-3">
+        {(!sidebarCollapsed || isMobile) && (
+          <div className="px-2 py-1 text-center">
+            <p className="font-serif italic text-[11px] text-[#7aa69e] leading-snug">
+              Better Strategies. Smarter Trades.<br/>Longer Growth.
+            </p>
+          </div>
+        )}
+
         <button
           onClick={() => {
             if (isMobile) setMobileMenuOpen(false);
             setEmergencyStopOpen(true);
           }}
           className={clsx(
-            'w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200/80 transition-all font-semibold text-xs tracking-wider shadow-xs hover:shadow-red-500/10',
+            'w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 transition-all font-semibold text-xs tracking-wider shadow-xs',
             sidebarCollapsed && !isMobile && 'px-0'
           )}
           title="EMERGENCY STOP ALL"
         >
-          <ShieldAlert className="w-4 h-4 shrink-0 text-red-600 animate-pulse" />
+          <ShieldAlert className="w-4 h-4 shrink-0 text-rose-400 animate-pulse" />
           {(!sidebarCollapsed || isMobile) && <span>KILL SWITCH</span>}
         </button>
       </div>
@@ -143,8 +166,8 @@ export const Sidebar: React.FC = () => {
       {/* Desktop Sidebar */}
       <aside
         className={clsx(
-          'hidden md:flex bg-white text-slate-800 border-r border-slate-200 flex-col justify-between transition-all duration-300 z-30 shrink-0 sticky top-0 h-screen shadow-xs',
-          sidebarCollapsed ? 'w-16' : 'w-60'
+          'hidden md:flex bg-[#062c26] text-white border-r border-[#0f443c]/80 flex-col justify-between transition-all duration-300 z-30 shrink-0 sticky top-0 h-screen shadow-lg',
+          sidebarCollapsed ? 'w-16' : 'w-64'
         )}
       >
         {navContent(false)}
@@ -155,12 +178,12 @@ export const Sidebar: React.FC = () => {
         <div className="md:hidden fixed inset-0 z-50 flex">
           {/* Backdrop Overlay */}
           <div
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity"
             onClick={() => setMobileMenuOpen(false)}
           />
 
           {/* Drawer Sidebar Content */}
-          <div className="relative bg-white w-72 max-w-[85vw] h-full shadow-2xl flex flex-col z-10 animate-slide-in">
+          <div className="relative bg-[#062c26] text-white w-72 max-w-[85vw] h-full shadow-2xl flex flex-col z-10 animate-slide-in">
             {navContent(true)}
           </div>
         </div>

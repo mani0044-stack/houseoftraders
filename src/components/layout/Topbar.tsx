@@ -126,7 +126,7 @@ export const Topbar: React.FC = () => {
         {/* Quick Order Button */}
         <button
           onClick={() => setManualOrderOpen(true)}
-          className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-xs shadow-blue-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[#10b981] hover:bg-[#059669] text-white shadow-xs shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
           title="Place Quick Order on Angel One"
         >
           <Zap className="w-3.5 h-3.5 fill-current" />

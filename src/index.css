@@ -2,14 +2,16 @@
 
 @layer base {
   :root {
-    --font-serif: 'Bodoni Moda', Didot, Georgia, serif;
-    --font-script: 'Pinyon Script', cursive;
-    --font-sans: 'Montserrat', sans-serif;
+    --font-serif: 'Playfair Display', Georgia, serif;
+    --font-sans: 'Plus Jakarta Sans', 'Inter', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
+    --color-sidebar-bg: #062c26;
+    --color-sidebar-active: #0d483d;
+    --color-emerald-primary: #10b981;
   }
 
   body {
-    background-color: #F7F8FA;
+    background-color: #f4f7f6;
     color: #111827;
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
@@ -18,7 +20,7 @@
   
   /* Focus outline styling */
   *:focus-visible {
-    outline: 2px solid #2563EB;
+    outline: 2px solid #10b981;
     outline-offset: 2px;
   }
 }

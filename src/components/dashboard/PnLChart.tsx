@@ -34,7 +34,7 @@ export const PnLChart: React.FC = () => {
             onClick={() => setViewMode('cumulative')}
             className={clsx(
               'px-3 py-1 text-xs font-semibold rounded-lg transition-all',
-              viewMode === 'cumulative' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              viewMode === 'cumulative' ? 'bg-[#062c26] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
             )}
           >
             Cumulative
@@ -43,7 +43,7 @@ export const PnLChart: React.FC = () => {
             onClick={() => setViewMode('intraday')}
             className={clsx(
               'px-3 py-1 text-xs font-semibold rounded-lg transition-all',
-              viewMode === 'intraday' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              viewMode === 'intraday' ? 'bg-[#062c26] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
             )}
           >
             Intraday Step
@@ -56,8 +56,8 @@ export const PnLChart: React.FC = () => {
           <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={totalPnL >= 0 ? "#2563EB" : "#DC2626"} stopOpacity={0.2}/>
-                <stop offset="95%" stopColor={totalPnL >= 0 ? "#2563EB" : "#DC2626"} stopOpacity={0.0}/>
+                <stop offset="5%" stopColor={totalPnL >= 0 ? "#10b981" : "#dc2626"} stopOpacity={0.25}/>
+                <stop offset="95%" stopColor={totalPnL >= 0 ? "#10b981" : "#dc2626"} stopOpacity={0.0}/>
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
@@ -72,7 +72,7 @@ export const PnLChart: React.FC = () => {
             <Tooltip
               contentStyle={{ 
                 backgroundColor: '#FFFFFF', 
-                borderColor: '#E5E7EB', 
+                borderColor: '#E2E8F0', 
                 borderRadius: '12px', 
                 fontSize: '12px', 
                 boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)' 
@@ -82,7 +82,7 @@ export const PnLChart: React.FC = () => {
             <Area
               type="monotone"
               dataKey={viewMode === 'cumulative' ? 'cumulative' : 'pnl'}
-              stroke={totalPnL >= 0 ? "#2563EB" : "#DC2626"}
+              stroke={totalPnL >= 0 ? "#10b981" : "#dc2626"}
               strokeWidth={2.5}
               fillOpacity={1}
               fill="url(#pnlGradient)"

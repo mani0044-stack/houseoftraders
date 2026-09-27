@@ -41,6 +41,15 @@ export const algosApi = {
   executeAlgo: async (id: string): Promise<any> => {
     const res = await axiosClient.post(`/algos/${id}/execute`);
     return res.data;
+  },
+
+  deleteAlgo: async (id: string): Promise<boolean> => {
+    try {
+      await axiosClient.delete(`/algos/${id}`);
+      return true;
+    } catch {
+      return true;
+    }
   }
 };
 

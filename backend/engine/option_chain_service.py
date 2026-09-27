@@ -190,6 +190,14 @@ class OptionChainService:
       ce_ltp = max(3.0, round(max(0.0, spot_price - strike) + max(12.0, 175.0 - abs(i) * 11.5), 2))
       pe_ltp = max(3.0, round(max(0.0, strike - spot_price) + max(12.0, 175.0 - abs(i) * 11.5), 2))
 
+      # Check Sensibull live WebSocket service for real-time tick overrides
+      from backend.engine.sensibull_live_service import sensibull_live_service
+      sb_ce_ltp = sensibull_live_service.live_quotes.get(f"{underlying}_{int(strike)}_CE")
+      sb_pe_ltp = sensibull_live_service.live_quotes.get(f"{underlying}_{int(strike)}_PE")
+
+      if sb_ce_ltp: ce_ltp = float(sb_ce_ltp)
+      if sb_pe_ltp: pe_ltp = float(sb_pe_ltp)
+
       if smart_api and ce_token and not ce_token.startswith("CE-"):
         try:
           q = smart_api.getLtpData("NFO", ce_symbol, ce_token)

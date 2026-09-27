@@ -85,10 +85,13 @@ export const OptionChainPage: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <Layers className="w-5 h-5 text-emerald-600" /> Angel One Live Option Chain
+            <Layers className="w-5 h-5 text-emerald-600" /> Sensibull Live Option Chain Stream
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-mono font-bold uppercase border border-emerald-300 flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> LIVE RELAY
+            </span>
           </h1>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Real-time SmartAPI WebSocket Stream, At-The-Money Matrix & Implied Volatility
+            Real-Time Sensibull Stream (`wsrelay.sensibull.com`), Angel One Scrip Master & Black-Scholes Greeks Solver
           </p>
         </div>
 

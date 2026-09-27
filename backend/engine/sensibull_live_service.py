@@ -105,8 +105,8 @@ class SensibullLiveService:
     """Update internal live quote matrix from decoded Sensibull payload."""
     if not isinstance(data, dict):
       return
-    topic = data.get("topic") or data.get("dataSource")
-    payload = data.get("payload") or data
+    topic = data.get("topic") or data.get("dataSource") or data.get("type")
+    payload = data.get("payload") or data.get("data") or data
 
     if topic in ["underlying-stats", "quote-binary"]:
       symbol = payload.get("underlying") or payload.get("symbol")
@@ -117,6 +117,19 @@ class SensibullLiveService:
           "change": float(payload.get("change", 0.0) or 0.0),
           "lastUpdated": datetime.now().strftime("%H:%M:%S IST")
         }
+
+    elif topic == "option-chain":
+      chain_data = payload.get("chain") or payload.get("optionChain") or payload
+      if isinstance(chain_data, dict):
+        underlying = payload.get("underlying") or "NIFTY"
+        for strike_key, item in chain_data.items():
+          if isinstance(item, dict):
+            ce_ltp = item.get("ce_ltp") or item.get("callLtp")
+            pe_ltp = item.get("pe_ltp") or item.get("putLtp")
+            if ce_ltp:
+              self.live_quotes[f"{underlying}_{strike_key}_CE"] = float(ce_ltp)
+            if pe_ltp:
+              self.live_quotes[f"{underlying}_{strike_key}_PE"] = float(pe_ltp)
 
   def get_status(self) -> Dict[str, Any]:
     return {

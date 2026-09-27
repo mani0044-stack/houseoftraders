@@ -140,81 +140,23 @@ def get_market_candles(symbol: str = "NIFTY", timeframe: str = "5m"):
   return candles
 
 
+from backend.engine.option_chain_service import option_chain_service
+
+@router.get("/options/expiries")
+def get_option_expiries(underlying: str = "NIFTY"):
+  return option_chain_service.get_available_expiries(underlying)
+
 @router.get("/options/chain")
-def get_option_chain(underlying: str = "NIFTY", expiry: str = "26 SEP 2024", spot: float = None):
-  # Return generated option chain matrix centered on spot price
-  step = 100 if underlying == "BANKNIFTY" else 50
-  if spot is None or spot <= 0:
-    spot = 53210.80 if underlying == "BANKNIFTY" else 23640.25 if underlying == "FINNIFTY" else 24865.40
-  atm = round(spot / step) * step
-
-  rows = []
-  for i in range(-15, 16):
-    strike = atm + i * step
-    is_atm = (strike == atm)
-    ce_moneyness = spot - strike
-    pe_moneyness = strike - spot
-
-    ce_ltp = max(5.0, round(max(0.0, ce_moneyness) + max(15.0, 180.0 - abs(i) * 12.0), 2))
-    pe_ltp = max(5.0, round(max(0.0, pe_moneyness) + max(15.0, 180.0 - abs(i) * 12.0), 2))
-
-    delta_ce = round(min(0.99, max(0.01, 0.5 + (i * -0.03))), 2)
-    delta_pe = round(min(-0.01, max(-0.99, -0.5 + (i * -0.03))), 2)
-
-    rows.append({
-      "strike": strike,
-      "isATM": is_atm,
-      "ce": {
-        "symbol": f"{underlying}24SEP{strike}CE",
-        "underlying": underlying,
-        "strike": strike,
-        "expiry": expiry,
-        "type": "CE",
-        "ltp": ce_ltp,
-        "change": round(ce_ltp * 0.03, 2),
-        "changePercent": 2.4,
-        "bidPrice": round(ce_ltp - 0.5, 2),
-        "bidQty": 500,
-        "askPrice": round(ce_ltp + 0.5, 2),
-        "askQty": 500,
-        "volume": max(1000, 45000 - abs(i) * 1500),
-        "openInterest": max(5000, 120000 - abs(i) * 4000),
-        "changeOI": 1500 - i * 100,
-        "greeks": {
-          "delta": delta_ce,
-          "gamma": round(max(0.001, 0.005 - abs(i) * 0.0003), 4),
-          "theta": -12.5,
-          "vega": 8.4,
-          "iv": round(14.5 + abs(i) * 0.3, 1)
-        },
-        "isATM": is_atm
-      },
-      "pe": {
-        "symbol": f"{underlying}24SEP{strike}PE",
-        "underlying": underlying,
-        "strike": strike,
-        "expiry": expiry,
-        "type": "PE",
-        "ltp": pe_ltp,
-        "change": round(-pe_ltp * 0.02, 2),
-        "changePercent": -1.8,
-        "bidPrice": round(pe_ltp - 0.5, 2),
-        "bidQty": 500,
-        "askPrice": round(pe_ltp + 0.5, 2),
-        "askQty": 500,
-        "volume": max(1000, 42000 - abs(i) * 1500),
-        "openInterest": max(5000, 115000 - abs(i) * 4000),
-        "changeOI": -1200 + i * 80,
-        "greeks": {
-          "delta": delta_pe,
-          "gamma": round(max(0.001, 0.005 - abs(i) * 0.0003), 4),
-          "theta": -12.5,
-          "vega": 8.4,
-          "iv": round(14.5 + abs(i) * 0.3, 1)
-        },
-        "isATM": is_atm
-      }
-    })
-
-  return rows
+def get_option_chain(
+  underlying: str = "NIFTY",
+  expiry: Optional[str] = None,
+  spot: Optional[float] = None,
+  strikes_range: int = 15
+):
+  return option_chain_service.get_option_chain_matrix(
+    underlying=underlying,
+    expiry=expiry,
+    spot_price=spot,
+    num_strikes=strikes_range
+  )
 

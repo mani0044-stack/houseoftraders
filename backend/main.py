@@ -16,6 +16,7 @@ from backend.api.order_routes import router as order_router
 from backend.api.position_routes import router as position_router
 from backend.api.risk_routes import router as risk_router
 from backend.api.backtest_routes import router as backtest_router
+from backend.api.ingestor_routes import router as ingestor_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("algotrade")
@@ -47,6 +48,7 @@ app.include_router(order_router, prefix="/api/v1")
 app.include_router(position_router, prefix="/api/v1")
 app.include_router(risk_router, prefix="/api/v1")
 app.include_router(backtest_router, prefix="/api/v1")
+app.include_router(ingestor_router, prefix="/api/v1")
 
 
 class ConnectionManager:

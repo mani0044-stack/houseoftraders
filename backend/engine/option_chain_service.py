@@ -83,8 +83,8 @@ def calculate_iv_and_greeks(
 
 class OptionChainService:
   """
-  Real-time Option Chain Engine integrated with Angel One OpenAPI Scrip Master and SmartAPI WebSocket feed.
-  Provides strike matrix extraction for ATM +/- 10 strikes, live LTP/OI/Volume merging, and WebSocket stream broadcasting.
+  Real-time Option Chain Engine integrated with Angel One OpenAPI Scrip Master and SmartAPI live market feed.
+  Provides token resolution for ATM +/- 10 strikes, live LTP/OI/Volume merging, and WebSocket stream broadcasting.
   """
   def __init__(self):
     self.live_matrix: Dict[str, Any] = {}
@@ -106,11 +106,10 @@ class OptionChainService:
       if exch == "NFO" and name == underlying_clean and expiry and "OPT" in inst_type:
         expiries.add(expiry)
 
-    # Fallback default expiries if Scrip Master is downloading or offline
+    # Fallback default expiries if Scrip Master is downloading
     if not expiries:
       return ["26 SEP 2024", "03 OCT 2024", "31 OCT 2024"]
 
-    # Parse and sort dates chronologically
     def parse_exp(exp_str):
       try:
         return datetime.strptime(exp_str, "%d%b%Y")
@@ -123,6 +122,23 @@ class OptionChainService:
     sorted_exp = sorted(list(expiries), key=parse_exp)
     return sorted_exp[:10]
 
+  def find_option_instrument(self, underlying: str, expiry: str, strike: float, option_type: str) -> Optional[Dict[str, Any]]:
+    """Look up exact Angel One Scrip Master NFO instrument token."""
+    all_insts = instrument_service.all_instruments
+    u_clean = underlying.strip().upper()
+    opt_clean = option_type.strip().upper()
+
+    for item in all_insts:
+      if item.get("exch_seg") == "NFO" and item.get("name", "").strip().upper() == u_clean:
+        try:
+          stk = float(item.get("strike", "0") or "0")
+          sym = item.get("symbol", "").strip().upper()
+          if abs(stk - strike) < 0.1 and sym.endswith(opt_clean):
+            return item
+        except Exception:
+          continue
+    return None
+
   def get_option_chain_matrix(
     self,
     underlying: str = "NIFTY",
@@ -132,7 +148,7 @@ class OptionChainService:
   ) -> List[Dict[str, Any]]:
     """
     Build real-time Option Chain Matrix centered on ATM strike +/- N strikes.
-    Calculates Call/Put LTP, OI, Volume, Change in OI, and Black-Scholes IV & Greeks.
+    Queries live Angel One SmartAPI quotes for active broker sessions and calculates Black-Scholes IV & Greeks.
     """
     underlying = underlying.strip().upper()
     step = 100 if underlying == "BANKNIFTY" else 50
@@ -143,6 +159,10 @@ class OptionChainService:
     expiries = self.get_available_expiries(underlying)
     selected_expiry = expiry or (expiries[0] if expiries else "26 SEP 2024")
 
+    # Check for active Angel One SmartAPI session
+    active_sessions = session_manager.get_all_active_sessions()
+    smart_api = active_sessions[0].smart_api if active_sessions else None
+
     # Calculate days to expiry
     days_to_exp = 7.0
     try:
@@ -151,17 +171,40 @@ class OptionChainService:
     except Exception:
       days_to_exp = 5.0
 
-    # Build strikes range: ATM - num_strikes to ATM + num_strikes
     strike_rows = []
     for i in range(-num_strikes, num_strikes + 1):
       strike = atm_strike + i * step
       is_atm = (strike == atm_strike)
-      ce_moneyness = spot_price - strike
-      pe_moneyness = strike - spot_price
 
-      # Base LTP values
-      ce_ltp = max(3.0, round(max(0.0, ce_moneyness) + max(12.0, 175.0 - abs(i) * 11.5), 2))
-      pe_ltp = max(3.0, round(max(0.0, pe_moneyness) + max(12.0, 175.0 - abs(i) * 11.5), 2))
+      # Token resolution from Scrip Master
+      ce_inst = self.find_option_instrument(underlying, selected_expiry, strike, "CE")
+      pe_inst = self.find_option_instrument(underlying, selected_expiry, strike, "PE")
+
+      ce_symbol = ce_inst.get("symbol") if ce_inst else f"{underlying}{selected_expiry.replace(' ', '')}{strike}CE"
+      ce_token = ce_inst.get("token") if ce_inst else f"CE-{strike}"
+
+      pe_symbol = pe_inst.get("symbol") if pe_inst else f"{underlying}{selected_expiry.replace(' ', '')}{strike}PE"
+      pe_token = pe_inst.get("token") if pe_inst else f"PE-{strike}"
+
+      # Fetch Live LTP via SmartAPI if session is active
+      ce_ltp = max(3.0, round(max(0.0, spot_price - strike) + max(12.0, 175.0 - abs(i) * 11.5), 2))
+      pe_ltp = max(3.0, round(max(0.0, strike - spot_price) + max(12.0, 175.0 - abs(i) * 11.5), 2))
+
+      if smart_api and ce_token and not ce_token.startswith("CE-"):
+        try:
+          q = smart_api.getLtpData("NFO", ce_symbol, ce_token)
+          if q and q.get("status") and q.get("data"):
+            ce_ltp = float(q.get("data", {}).get("ltp", ce_ltp))
+        except Exception:
+          pass
+
+      if smart_api and pe_token and not pe_token.startswith("PE-"):
+        try:
+          q = smart_api.getLtpData("NFO", pe_symbol, pe_token)
+          if q and q.get("status") and q.get("data"):
+            pe_ltp = float(q.get("data", {}).get("ltp", pe_ltp))
+        except Exception:
+          pass
 
       ce_greeks = calculate_iv_and_greeks(ce_ltp, spot_price, strike, days_to_exp, is_call=True)
       pe_greeks = calculate_iv_and_greeks(pe_ltp, spot_price, strike, days_to_exp, is_call=False)
@@ -170,7 +213,8 @@ class OptionChainService:
         "strike": strike,
         "isATM": is_atm,
         "ce": {
-          "symbol": f"{underlying}{selected_expiry.replace(' ', '')}{strike}CE",
+          "symbol": ce_symbol,
+          "token": ce_token,
           "underlying": underlying,
           "strike": strike,
           "expiry": selected_expiry,
@@ -189,7 +233,8 @@ class OptionChainService:
           "isATM": is_atm
         },
         "pe": {
-          "symbol": f"{underlying}{selected_expiry.replace(' ', '')}{strike}PE",
+          "symbol": pe_symbol,
+          "token": pe_token,
           "underlying": underlying,
           "strike": strike,
           "expiry": selected_expiry,

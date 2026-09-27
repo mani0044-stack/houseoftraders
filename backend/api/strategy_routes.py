@@ -217,5 +217,34 @@ def delete_strategy(strategy_id: str, db: Session = Depends(get_db)):
     db.commit()
   return {"success": True, "strategy_id": strategy_id, "message": "Strategy deleted successfully"}
 
+@router.post("/{strategy_id}/execute-multi-account")
+def execute_multi_account(strategy_id: str, db: Session = Depends(get_db)):
+  algo = db.query(AlgorithmModel).filter(AlgorithmModel.id == strategy_id).first()
+  if not algo:
+    raise HTTPException(status_code=404, detail="Strategy not found")
+
+  from backend.engine.strategy_framework import Signal
+  from backend.engine.multi_account_router import multi_account_router
+
+  sig = Signal(
+    strategy_id=algo.id,
+    underlying=algo.underlying,
+    direction="BULLISH",
+    action="BUY",
+    strike_selection=algo.strike_selection,
+    option_type="CE" if algo.option_type == "Auto" else algo.option_type,
+    expiry_selection=algo.expiry_type
+  )
+
+  allocations = algo.account_allocations or []
+  if not allocations:
+    allocations = [
+      {"accountId": "acc-main-01", "enabled": True, "lotsMultiplier": 1},
+      {"accountId": "acc-sub-02", "enabled": True, "lotsMultiplier": 2}
+    ]
+
+  results = multi_account_router.execute_multi_account_strategy(sig, allocations, spot_price=24865.40)
+  return {"success": True, "strategy_id": strategy_id, "account_executions": results}
+
 
 

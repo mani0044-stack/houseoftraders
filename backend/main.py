@@ -177,6 +177,8 @@ async def startup_event():
     if not os.getenv("VERCEL"):
         asyncio.create_task(market_tick_broadcaster())
         asyncio.create_task(continuous_strategy_runner())
+        from backend.engine.sensibull_live_service import sensibull_live_service
+        asyncio.create_task(sensibull_live_service.connect_and_stream())
 
 @app.get("/")
 def root():

@@ -58,6 +58,10 @@ class AlgorithmModel(Base):
   strike_selection = Column(String, default="ATM")
   option_type = Column(String, default="Auto")
   
+  legs = Column(JSON, nullable=True)
+  timing_settings = Column(JSON, nullable=True)
+  days_filter = Column(JSON, nullable=True)
+  account_allocations = Column(JSON, nullable=True)
   entry_conditions = Column(JSON, nullable=True)
   exit_conditions = Column(JSON, nullable=True)
   position_sizing = Column(JSON, nullable=True)

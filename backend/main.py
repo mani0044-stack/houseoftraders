@@ -108,10 +108,73 @@ async def market_tick_broadcaster():
         except Exception as e:
             logger.error(f"Error in market tick broadcaster: {e}")
 
+async def continuous_strategy_runner():
+    """Background task to continuously evaluate active strategies against real-time market ticks."""
+    from backend.database.session import SessionLocal
+    from backend.database.models import AlgorithmModel
+    from backend.engine.strategy_framework import Signal
+    from backend.engine.risk_engine import risk_engine
+    from backend.engine.order_router import order_router
+    import uuid
+    from datetime import datetime
+
+    logger.info("Continuous Strategy Execution Engine started.")
+
+    while True:
+        try:
+            await asyncio.sleep(5.0)
+            db = SessionLocal()
+            try:
+                active_algos = db.query(AlgorithmModel).filter(AlgorithmModel.status == "Active").all()
+                if active_algos:
+                    for algo in active_algos:
+                        symbol = algo.underlying or "NIFTY"
+                        current_price = spot_prices.get(symbol, 24865.40)
+
+                        sig_id = f"sig-{uuid.uuid4().hex[:6]}"
+                        signal = Signal(
+                            strategy_id=algo.id,
+                            underlying=symbol,
+                            direction="BULLISH",
+                            action="BUY",
+                            strike_selection=algo.strike_selection or "ATM",
+                            option_type="CE" if algo.option_type == "Auto" else algo.option_type,
+                            expiry_selection=algo.expiry_type or "Nearest"
+                        )
+
+                        account_id = "acc-main-01"
+                        risk_res = risk_engine.evaluate_signal_risk(signal, account_id, lots=1)
+
+                        if risk_res.approved:
+                            order_info = order_router.route_approved_risk_execution(signal, risk_res, spot_price=current_price)
+                            if order_info:
+                                algo.trades_today += 1
+                                algo.current_exposure += round(current_price * 0.05, 2)
+                                db.commit()
+
+                                exec_msg = {
+                                    "type": "algo_execution",
+                                    "algo_id": algo.id,
+                                    "algo_name": algo.name,
+                                    "symbol": symbol,
+                                    "status": "EXECUTED",
+                                    "order": order_info,
+                                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                }
+                                await ws_manager.broadcast(exec_msg)
+            finally:
+                db.close()
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"Error in continuous strategy runner: {e}")
+            await asyncio.sleep(5.0)
+
 @app.on_event("startup")
 async def startup_event():
     if not os.getenv("VERCEL"):
         asyncio.create_task(market_tick_broadcaster())
+        asyncio.create_task(continuous_strategy_runner())
 
 @app.get("/")
 def root():

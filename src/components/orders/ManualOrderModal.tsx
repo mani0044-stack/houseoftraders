@@ -31,8 +31,9 @@ export interface BasketLeg {
   showDropdown: boolean;
   orderType: 'MARKET' | 'LIMIT';
   productType: 'CARRYFORWARD' | 'INTRADAY' | 'DELIVERY';
-  quantity: number;
+  lots: number;
   lotSize: number;
+  quantity: number;
   price: number;
 }
 
@@ -65,7 +66,7 @@ export const ManualOrderModal: React.FC = () => {
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
 
   const [side, setSide] = useState<'BUY' | 'SELL'>('BUY');
-  const [quantity, setQuantity] = useState<number>(50);
+  const [lots, setLots] = useState<number>(1);
   const [lotSize, setLotSize] = useState<number>(50);
   const [orderType, setOrderType] = useState<'MARKET' | 'LIMIT'>('MARKET');
   const [productType, setProductType] = useState<'CARRYFORWARD' | 'INTRADAY' | 'DELIVERY'>('CARRYFORWARD');
@@ -84,8 +85,9 @@ export const ManualOrderModal: React.FC = () => {
       showDropdown: false,
       orderType: 'MARKET',
       productType: 'CARRYFORWARD',
-      quantity: 50,
+      lots: 1,
       lotSize: 50,
+      quantity: 50,
       price: 0.0
     },
     {
@@ -98,8 +100,9 @@ export const ManualOrderModal: React.FC = () => {
       showDropdown: false,
       orderType: 'MARKET',
       productType: 'CARRYFORWARD',
-      quantity: 50,
+      lots: 1,
       lotSize: 50,
+      quantity: 50,
       price: 0.0
     }
   ]);
@@ -133,6 +136,7 @@ export const ManualOrderModal: React.FC = () => {
   if (!isManualOrderOpen) return null;
 
   const activeAccountsCount = accounts.filter((a) => a.isEnabled).length || accounts.length || 1;
+  const singleTotalQuantity = lots * lotSize;
 
   // Single instrument select
   const handleSelectInstrument = (inst: InstrumentSearchResult) => {
@@ -142,11 +146,6 @@ export const ManualOrderModal: React.FC = () => {
 
     const lot = inst.lotsize || (inst.symbol.includes('BANKNIFTY') ? 15 : inst.symbol.includes('FINNIFTY') ? 40 : inst.symbol.includes('SENSEX') ? 10 : inst.symbol.includes('CRUDEOIL') ? 100 : inst.symbol.includes('NIFTY') ? 50 : 1);
     setLotSize(lot);
-    setQuantity(lot);
-  };
-
-  const handleQuantityMultiplier = (multiplier: number) => {
-    setQuantity(lotSize * multiplier);
   };
 
   // Basket Leg Management
@@ -161,8 +160,9 @@ export const ManualOrderModal: React.FC = () => {
       showDropdown: false,
       orderType: 'MARKET',
       productType: 'CARRYFORWARD',
-      quantity: defaultLotSize,
+      lots: 1,
       lotSize: defaultLotSize,
+      quantity: defaultLotSize,
       price: 0.0
     };
     setBasketLegs([...basketLegs, newLeg]);
@@ -185,7 +185,16 @@ export const ManualOrderModal: React.FC = () => {
   };
 
   const handleUpdateLeg = (id: string, updates: Partial<BasketLeg>) => {
-    setBasketLegs(basketLegs.map((leg) => (leg.id === id ? { ...leg, ...updates } : leg)));
+    setBasketLegs(
+      basketLegs.map((leg) => {
+        if (leg.id === id) {
+          const updatedLeg = { ...leg, ...updates };
+          const calculatedQuantity = (updatedLeg.lots || 1) * updatedLeg.lotSize;
+          return { ...updatedLeg, quantity: calculatedQuantity };
+        }
+        return leg;
+      })
+    );
   };
 
   // Search instrument for specific basket leg
@@ -209,8 +218,7 @@ export const ManualOrderModal: React.FC = () => {
       symbol: inst.symbol,
       searchQuery: inst.symbol,
       showDropdown: false,
-      lotSize: lot,
-      quantity: lot
+      lotSize: lot
     });
   };
 
@@ -228,8 +236,9 @@ export const ManualOrderModal: React.FC = () => {
         showDropdown: false,
         orderType: 'MARKET',
         productType: 'CARRYFORWARD',
-        quantity: 10,
+        lots: 1,
         lotSize: 10,
+        quantity: 10,
         price: 0.0
       },
       {
@@ -242,8 +251,9 @@ export const ManualOrderModal: React.FC = () => {
         showDropdown: false,
         orderType: 'MARKET',
         productType: 'CARRYFORWARD',
-        quantity: 10,
+        lots: 1,
         lotSize: 10,
+        quantity: 10,
         price: 0.0
       }
     ]);
@@ -263,8 +273,9 @@ export const ManualOrderModal: React.FC = () => {
         showDropdown: false,
         orderType: 'MARKET',
         productType: 'CARRYFORWARD',
-        quantity: 100,
+        lots: 1,
         lotSize: 100,
+        quantity: 100,
         price: 0.0
       },
       {
@@ -277,8 +288,9 @@ export const ManualOrderModal: React.FC = () => {
         showDropdown: false,
         orderType: 'MARKET',
         productType: 'CARRYFORWARD',
-        quantity: 100,
+        lots: 1,
         lotSize: 100,
+        quantity: 100,
         price: 0.0
       }
     ]);
@@ -298,8 +310,9 @@ export const ManualOrderModal: React.FC = () => {
         showDropdown: false,
         orderType: 'MARKET',
         productType: 'CARRYFORWARD',
-        quantity: 50,
+        lots: 1,
         lotSize: 50,
+        quantity: 50,
         price: 0.0
       },
       {
@@ -312,8 +325,9 @@ export const ManualOrderModal: React.FC = () => {
         showDropdown: false,
         orderType: 'MARKET',
         productType: 'CARRYFORWARD',
-        quantity: 50,
+        lots: 1,
         lotSize: 50,
+        quantity: 50,
         price: 0.0
       },
       {
@@ -326,8 +340,9 @@ export const ManualOrderModal: React.FC = () => {
         showDropdown: false,
         orderType: 'MARKET',
         productType: 'CARRYFORWARD',
-        quantity: 50,
+        lots: 1,
         lotSize: 50,
+        quantity: 50,
         price: 0.0
       },
       {
@@ -340,8 +355,9 @@ export const ManualOrderModal: React.FC = () => {
         showDropdown: false,
         orderType: 'MARKET',
         productType: 'CARRYFORWARD',
-        quantity: 50,
+        lots: 1,
         lotSize: 50,
+        quantity: 50,
         price: 0.0
       }
     ]);
@@ -356,8 +372,8 @@ export const ManualOrderModal: React.FC = () => {
       return;
     }
 
-    if (quantity <= 0) {
-      addToast('Validation Error', 'Quantity must be greater than 0.', 'error');
+    if (lots <= 0) {
+      addToast('Validation Error', 'Lots must be at least 1.', 'error');
       return;
     }
 
@@ -367,7 +383,7 @@ export const ManualOrderModal: React.FC = () => {
         accountId,
         symbol: symbol.toUpperCase(),
         side,
-        quantity,
+        quantity: singleTotalQuantity,
         orderType,
         productType,
         price: orderType === 'LIMIT' ? price : 0.0,
@@ -380,7 +396,7 @@ export const ManualOrderModal: React.FC = () => {
 
       addToast(
         'Angel One Order Transmitted',
-        `${side} ${quantity} ${symbol} @ ${orderType}. ${countMsg}`,
+        `${side} ${lots} Lot(s) [${singleTotalQuantity} Qty] ${symbol} @ ${orderType}. ${countMsg}`,
         'success'
       );
 
@@ -407,12 +423,13 @@ export const ManualOrderModal: React.FC = () => {
     try {
       for (let i = 0; i < basketLegs.length; i++) {
         const leg = basketLegs[i];
+        const legTotalQuantity = (leg.lots || 1) * leg.lotSize;
         try {
           await placeOrder({
             accountId,
             symbol: leg.symbol.toUpperCase(),
             side: leg.side,
-            quantity: leg.quantity,
+            quantity: legTotalQuantity,
             orderType: leg.orderType,
             productType: leg.productType,
             price: leg.orderType === 'LIMIT' ? leg.price : 0.0,
@@ -466,7 +483,7 @@ export const ManualOrderModal: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-slate-500 font-medium">
-                {orderMode === 'BASKET' ? 'Angel One Basket Orders (NIFTY, BANKNIFTY, SENSEX & CRUDE OIL Commodities)' : 'Direct Live Order Placement via Angel One SmartAPI Router'}
+                {orderMode === 'BASKET' ? 'Angel One Basket Orders in Lots (NIFTY, BANKNIFTY, SENSEX & CRUDE OIL)' : 'Direct Live Order Placement via Angel One SmartAPI Router'}
               </p>
             </div>
           </div>
@@ -537,7 +554,6 @@ export const ManualOrderModal: React.FC = () => {
                         setSymbol(preset.symbol);
                         setSearchQuery(preset.symbol);
                         setLotSize(preset.lotSize);
-                        setQuantity(preset.lotSize);
                       }}
                       className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 text-xs font-bold border border-slate-200 transition-colors flex items-center gap-1"
                     >
@@ -646,31 +662,45 @@ export const ManualOrderModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Quantity & Lot Multipliers */}
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className="block text-xs uppercase text-slate-500 font-bold tracking-wider">Quantity (Units)</label>
-                  <span className="text-[11px] text-slate-500 font-mono-num font-semibold">Lot Size: {lotSize}</span>
+              {/* Lots Input & Quantity Calculation */}
+              <div className="bg-slate-50 border border-slate-200/80 p-3 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs uppercase text-slate-700 font-bold tracking-wider">Number of Lots</label>
+                  <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-lg border border-emerald-200">
+                    Total: {singleTotalQuantity} Qty (Units)
+                  </span>
                 </div>
-                <input
-                  type="number"
-                  value={quantity}
-                  onChange={(e) => setQuantity(parseInt(e.target.value, 10) || 0)}
-                  min={1}
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono-num font-bold focus:outline-none focus:border-emerald-600"
-                />
-                {/* Quick lot buttons */}
-                <div className="flex items-center gap-2 mt-1.5 font-mono-num text-[11px]">
-                  <span className="text-slate-400 font-sans text-xs">Lots:</span>
-                  {[1, 2, 5, 10].map((m) => (
+                
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    value={lots}
+                    onChange={(e) => setLots(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    min={1}
+                    required
+                    className="w-32 bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-sm text-slate-900 font-mono-num font-bold focus:outline-none focus:border-emerald-600 shadow-2xs"
+                  />
+                  
+                  <span className="text-xs font-medium text-slate-500 font-mono">
+                    × Lot Size {lotSize} = <strong className="text-slate-900 font-mono-num">{singleTotalQuantity}</strong> Units
+                  </span>
+                </div>
+
+                {/* Quick Lot Buttons */}
+                <div className="flex items-center gap-2 pt-1 font-mono-num text-[11px]">
+                  <span className="text-slate-400 font-sans text-xs">Quick Lots:</span>
+                  {[1, 2, 5, 10, 20].map((l) => (
                     <button
-                      key={m}
+                      key={l}
                       type="button"
-                      onClick={() => handleQuantityMultiplier(m)}
-                      className="px-2 py-0.5 rounded-lg bg-slate-100 border border-slate-200 hover:bg-emerald-50 hover:border-emerald-200 text-slate-700 font-bold transition-colors"
+                      onClick={() => setLots(l)}
+                      className={`px-2.5 py-1 rounded-lg border font-bold transition-all ${
+                        lots === l
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                          : 'bg-white border-slate-200 hover:bg-emerald-50 text-slate-700'
+                      }`}
                     >
-                      {m}x ({lotSize * m})
+                      {l} {l === 1 ? 'Lot' : 'Lots'}
                     </button>
                   ))}
                 </div>
@@ -717,7 +747,7 @@ export const ManualOrderModal: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      <Zap className="w-4 h-4 fill-current" /> Transmit {side} Order ({accountId === 'ALL' ? `${activeAccountsCount} Accounts` : '1 Account'})
+                      <Zap className="w-4 h-4 fill-current" /> Transmit {side} ({lots} {lots === 1 ? 'Lot' : 'Lots'} = {singleTotalQuantity} Qty)
                     </>
                   )}
                 </button>
@@ -790,168 +820,194 @@ export const ManualOrderModal: React.FC = () => {
 
               {/* Basket Legs List */}
               <div className="space-y-3">
-                {basketLegs.map((leg, idx) => (
-                  <div key={leg.id} className="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-3 hover:border-slate-300 transition-all relative">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-mono font-bold text-slate-700">
-                          {idx + 1}
-                        </span>
-                        <span className="text-xs font-bold text-slate-800">Leg #{idx + 1}</span>
-                      </div>
+                {basketLegs.map((leg, idx) => {
+                  const legTotalQty = (leg.lots || 1) * leg.lotSize;
+                  return (
+                    <div key={leg.id} className="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-3 hover:border-slate-300 transition-all relative">
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-mono font-bold text-slate-700">
+                            {idx + 1}
+                          </span>
+                          <span className="text-xs font-bold text-slate-800">Leg #{idx + 1}</span>
+                        </div>
 
-                      {/* Quick Asset Chips per Leg */}
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10px] text-slate-400 font-bold uppercase mr-1">Quick Symbol:</span>
-                        {ASSET_PRESETS.map((p) => (
-                          <button
-                            key={p.name}
-                            type="button"
-                            onClick={() => {
-                              handleLegSearch(leg.id, p.symbol);
-                              handleUpdateLeg(leg.id, { lotSize: p.lotSize, quantity: p.lotSize });
-                            }}
-                            className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-emerald-100 hover:text-emerald-900 text-slate-700 transition-colors"
-                          >
-                            {p.name.split(' ')[0]}
-                          </button>
-                        ))}
-                      </div>
+                        {/* Quick Asset Chips per Leg */}
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase mr-1">Quick Symbol:</span>
+                          {ASSET_PRESETS.map((p) => (
+                            <button
+                              key={p.name}
+                              type="button"
+                              onClick={() => {
+                                handleLegSearch(leg.id, p.symbol);
+                                handleUpdateLeg(leg.id, { lotSize: p.lotSize });
+                              }}
+                              className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-emerald-100 hover:text-emerald-900 text-slate-700 transition-colors"
+                            >
+                              {p.name.split(' ')[0]}
+                            </button>
+                          ))}
+                        </div>
 
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleDuplicateLeg(leg)}
-                          className="p-1 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-                          title="Duplicate Leg"
-                        >
-                          <Copy className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveLeg(leg.id)}
-                          className="p-1 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
-                          title="Delete Leg"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Leg Controls Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                      {/* BUY / SELL Side */}
-                      <div className="sm:col-span-3">
-                        <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Side</label>
-                        <div className="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                        <div className="flex items-center gap-1.5">
                           <button
                             type="button"
-                            onClick={() => handleUpdateLeg(leg.id, { side: 'BUY' })}
-                            className={`py-1 text-[11px] font-bold rounded-lg transition-all ${
-                              leg.side === 'BUY' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-slate-600'
-                            }`}
+                            onClick={() => handleDuplicateLeg(leg)}
+                            className="p-1 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                            title="Duplicate Leg"
                           >
-                            BUY
+                            <Copy className="w-3.5 h-3.5" />
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleUpdateLeg(leg.id, { side: 'SELL' })}
-                            className={`py-1 text-[11px] font-bold rounded-lg transition-all ${
-                              leg.side === 'SELL' ? 'bg-rose-600 text-white shadow-2xs' : 'text-slate-600'
-                            }`}
+                            onClick={() => handleRemoveLeg(leg.id)}
+                            className="p-1 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
+                            title="Delete Leg"
                           >
-                            SELL
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
 
-                      {/* Leg Symbol Search */}
-                      <div className="sm:col-span-6 relative">
-                        <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Symbol Search (Index & MCX)</label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={leg.searchQuery || leg.symbol}
-                            onChange={(e) => handleLegSearch(leg.id, e.target.value)}
-                            onFocus={() => leg.searchQuery.length >= 2 && handleUpdateLeg(leg.id, { showDropdown: true })}
-                            placeholder="e.g. SENSEX, CRUDEOIL, NIFTY..."
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-900 font-mono-num font-bold uppercase focus:outline-none focus:border-emerald-600"
-                          />
-                          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                      {/* Leg Controls Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                        {/* BUY / SELL Side */}
+                        <div className="sm:col-span-3">
+                          <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Side</label>
+                          <div className="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateLeg(leg.id, { side: 'BUY' })}
+                              className={`py-1 text-[11px] font-bold rounded-lg transition-all ${
+                                leg.side === 'BUY' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-slate-600'
+                              }`}
+                            >
+                              BUY
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateLeg(leg.id, { side: 'SELL' })}
+                              className={`py-1 text-[11px] font-bold rounded-lg transition-all ${
+                                leg.side === 'SELL' ? 'bg-rose-600 text-white shadow-2xs' : 'text-slate-600'
+                              }`}
+                            >
+                              SELL
+                            </button>
+                          </div>
                         </div>
 
-                        {/* Leg Dropdown Autocomplete */}
-                        {leg.showDropdown && leg.searchResults.length > 0 && (
-                          <div className="absolute z-30 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-40 overflow-y-auto custom-scrollbar">
-                            {leg.searchResults.map((inst, i) => (
-                              <button
-                                key={i}
-                                type="button"
-                                onClick={() => handleSelectLegInstrument(leg.id, inst)}
-                                className="w-full px-3 py-2 text-left hover:bg-emerald-50/60 border-b border-slate-100 last:border-b-0 flex items-center justify-between text-xs"
-                              >
-                                <span className="font-bold text-slate-900">{inst.symbol}</span>
-                                <span className="text-[10px] font-mono text-slate-500">Lot: {inst.lotsize || 1}</span>
-                              </button>
-                            ))}
+                        {/* Leg Symbol Search */}
+                        <div className="sm:col-span-5 relative">
+                          <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Symbol Search (Index & MCX)</label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={leg.searchQuery || leg.symbol}
+                              onChange={(e) => handleLegSearch(leg.id, e.target.value)}
+                              onFocus={() => leg.searchQuery.length >= 2 && handleUpdateLeg(leg.id, { showDropdown: true })}
+                              placeholder="e.g. SENSEX, CRUDEOIL, NIFTY..."
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-900 font-mono-num font-bold uppercase focus:outline-none focus:border-emerald-600"
+                            />
+                            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                          </div>
+
+                          {/* Leg Dropdown Autocomplete */}
+                          {leg.showDropdown && leg.searchResults.length > 0 && (
+                            <div className="absolute z-30 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-40 overflow-y-auto custom-scrollbar">
+                              {leg.searchResults.map((inst, i) => (
+                                <button
+                                  key={i}
+                                  type="button"
+                                  onClick={() => handleSelectLegInstrument(leg.id, inst)}
+                                  className="w-full px-3 py-2 text-left hover:bg-emerald-50/60 border-b border-slate-100 last:border-b-0 flex items-center justify-between text-xs"
+                                >
+                                  <span className="font-bold text-slate-900">{inst.symbol}</span>
+                                  <span className="text-[10px] font-mono text-slate-500">Lot: {inst.lotsize || 1}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Leg Lots Input */}
+                        <div className="sm:col-span-4">
+                          <div className="flex justify-between items-center mb-1">
+                            <label className="block text-[10px] uppercase text-slate-500 font-bold">Lots</label>
+                            <span className="text-[10px] font-mono font-bold text-emerald-700">
+                              = {legTotalQty} Qty ({leg.lotSize}/lot)
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="number"
+                              value={leg.lots || 1}
+                              onChange={(e) => handleUpdateLeg(leg.id, { lots: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                              min={1}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 font-mono-num font-bold focus:outline-none focus:border-emerald-600"
+                            />
+                            {/* Quick Lot Buttons for Leg */}
+                            <div className="flex items-center gap-1 shrink-0 font-mono text-[10px]">
+                              {[1, 2, 5].map((l) => (
+                                <button
+                                  key={l}
+                                  type="button"
+                                  onClick={() => handleUpdateLeg(leg.id, { lots: l })}
+                                  className={`px-1.5 py-1 rounded border font-bold ${
+                                    (leg.lots || 1) === l ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-100 border-slate-200 text-slate-700'
+                                  }`}
+                                >
+                                  {l}L
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Advanced Types for Leg */}
+                      <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase">Order Type:</span>
+                          <select
+                            value={leg.orderType}
+                            onChange={(e) => handleUpdateLeg(leg.id, { orderType: e.target.value as any })}
+                            className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-800 outline-none"
+                          >
+                            <option value="MARKET">MARKET</option>
+                            <option value="LIMIT">LIMIT</option>
+                          </select>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase">Product:</span>
+                          <select
+                            value={leg.productType}
+                            onChange={(e) => handleUpdateLeg(leg.id, { productType: e.target.value as any })}
+                            className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-800 outline-none"
+                          >
+                            <option value="CARRYFORWARD">CARRYFORWARD</option>
+                            <option value="INTRADAY">INTRADAY</option>
+                            <option value="DELIVERY">DELIVERY</option>
+                          </select>
+                        </div>
+
+                        {leg.orderType === 'LIMIT' && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase">Price:</span>
+                            <input
+                              type="number"
+                              step="0.05"
+                              value={leg.price}
+                              onChange={(e) => handleUpdateLeg(leg.id, { price: parseFloat(e.target.value) || 0.0 })}
+                              className="w-20 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-mono-num font-bold text-slate-900 outline-none"
+                            />
                           </div>
                         )}
                       </div>
-
-                      {/* Leg Quantity / Lot Multipliers */}
-                      <div className="sm:col-span-3">
-                        <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Quantity (Lots: {leg.lotSize})</label>
-                        <input
-                          type="number"
-                          value={leg.quantity}
-                          onChange={(e) => handleUpdateLeg(leg.id, { quantity: parseInt(e.target.value, 10) || 0 })}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 font-mono-num font-bold focus:outline-none focus:border-emerald-600"
-                        />
-                      </div>
                     </div>
-
-                    {/* Advanced Types for Leg */}
-                    <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100 text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase">Order Type:</span>
-                        <select
-                          value={leg.orderType}
-                          onChange={(e) => handleUpdateLeg(leg.id, { orderType: e.target.value as any })}
-                          className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-800 outline-none"
-                        >
-                          <option value="MARKET">MARKET</option>
-                          <option value="LIMIT">LIMIT</option>
-                        </select>
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase">Product:</span>
-                        <select
-                          value={leg.productType}
-                          onChange={(e) => handleUpdateLeg(leg.id, { productType: e.target.value as any })}
-                          className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-800 outline-none"
-                        >
-                          <option value="CARRYFORWARD">CARRYFORWARD</option>
-                          <option value="INTRADAY">INTRADAY</option>
-                          <option value="DELIVERY">DELIVERY</option>
-                        </select>
-                      </div>
-
-                      {leg.orderType === 'LIMIT' && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase">Price:</span>
-                          <input
-                            type="number"
-                            step="0.05"
-                            value={leg.price}
-                            onChange={(e) => handleUpdateLeg(leg.id, { price: parseFloat(e.target.value) || 0.0 })}
-                            className="w-20 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-mono-num font-bold text-slate-900 outline-none"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Basket Execution Summary Bar */}

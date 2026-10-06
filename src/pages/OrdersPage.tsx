@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useTradingStore } from '../store/useTradingStore';
+import { useUIStore } from '../store/useUIStore';
 import { OrderTable } from '../components/orders/OrderTable';
 import { OrderStatus } from '../types/order';
+import { Plus, Zap, Layers } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const tabs: { label: string; value: OrderStatus | 'ALL' }[] = [
@@ -14,6 +16,7 @@ const tabs: { label: string; value: OrderStatus | 'ALL' }[] = [
 
 export const OrdersPage: React.FC = () => {
   const orders = useTradingStore((s) => s.orders);
+  const setManualOrderOpen = useUIStore((s) => s.setManualOrderOpen);
   const [activeTab, setActiveTab] = useState<OrderStatus | 'ALL'>('ALL');
 
   const filtered = orders.filter((o) => {
@@ -26,8 +29,16 @@ export const OrdersPage: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight font-sans">Orders & Execution Book</h1>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">Live Broker Orders Stream, Fills & Rejection Audit</p>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">Live Broker Orders Stream, Single & Angel One Basket Orders</p>
         </div>
+
+        <button
+          onClick={() => setManualOrderOpen(true)}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+        >
+          <Plus className="w-4 h-4 stroke-[2.5]" />
+          <span>Place Order / Basket</span>
+        </button>
       </div>
 
       {/* Tabs Bar */}

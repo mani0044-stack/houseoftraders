@@ -20,11 +20,13 @@ export const Layout: React.FC = () => {
   const removeToast = useUIStore((s) => s.removeToast);
 
   const fetchAccounts = useTradingStore((s) => s.fetchAccounts);
+  const fetchAlgos = useTradingStore((s) => s.fetchAlgos);
   const fetchPositions = useTradingStore((s) => s.fetchPositions);
   const fetchOrders = useTradingStore((s) => s.fetchOrders);
 
   React.useEffect(() => {
     fetchAccounts();
+    fetchAlgos();
     fetchPositions();
     fetchOrders();
   }, []);

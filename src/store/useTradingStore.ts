@@ -20,6 +20,32 @@ import { accountsApi } from '../api/accountsApi';
 import { ordersApi, CreateOrderRequest } from '../api/ordersApi';
 import { positionsApi } from '../api/positionsApi';
 import { marketApi } from '../api/marketApi';
+import { algosApi } from '../api/algosApi';
+
+const STORAGE_KEY_ALGOS = 'houseoftraders_saved_algos_v1';
+
+const getStoredAlgos = (): Algorithm[] => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_ALGOS);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.error('Failed reading algos from localStorage:', err);
+  }
+  return INITIAL_ALGOS;
+};
+
+const persistAlgos = (algos: Algorithm[]) => {
+  try {
+    localStorage.setItem(STORAGE_KEY_ALGOS, JSON.stringify(algos));
+  } catch (err) {
+    console.error('Failed saving algos to localStorage:', err);
+  }
+};
 
 interface TradingState {
   // Mode & Selection
@@ -43,6 +69,7 @@ interface TradingState {
 
   // Actions
   fetchAccounts: () => Promise<void>;
+  fetchAlgos: () => Promise<void>;
   fetchPositions: () => Promise<void>;
   fetchOrders: () => Promise<void>;
   fetchMarketQuotes: () => Promise<void>;
@@ -72,7 +99,7 @@ export const useTradingStore = create<TradingState>((set, get) => ({
   setSelectedAccountId: (id) => set({ selectedAccountId: id }),
 
   accounts: INITIAL_ACCOUNTS,
-  algos: INITIAL_ALGOS,
+  algos: getStoredAlgos(),
   marketQuotes: INITIAL_MARKET_QUOTES,
   positions: INITIAL_POSITIONS,
   orders: INITIAL_ORDERS,
@@ -86,16 +113,42 @@ export const useTradingStore = create<TradingState>((set, get) => ({
   fetchAccounts: async () => {
     try {
       const data = await accountsApi.getAccounts();
-      set({ accounts: data, backendConnected: true });
+      if (Array.isArray(data)) {
+        set({ accounts: data, backendConnected: true });
+      } else {
+        set({ backendConnected: true });
+      }
     } catch {
       set({ backendConnected: false });
+    }
+  },
+
+  fetchAlgos: async () => {
+    try {
+      const remoteAlgos = await algosApi.getAlgos();
+      if (Array.isArray(remoteAlgos) && remoteAlgos.length > 0) {
+        set((state) => {
+          const map = new Map<string, Algorithm>();
+          // Remote algos from backend
+          remoteAlgos.forEach((a) => map.set(a.id, a));
+          // Local algos take precedence if created/modified locally
+          state.algos.forEach((a) => map.set(a.id, a));
+          const merged = Array.from(map.values());
+          persistAlgos(merged);
+          return { algos: merged };
+        });
+      }
+    } catch (err) {
+      console.error("Failed fetching remote algos, using local persistent storage", err);
     }
   },
 
   fetchPositions: async () => {
     try {
       const data = await positionsApi.getPositions();
-      set({ positions: data });
+      if (Array.isArray(data)) {
+        set({ positions: data });
+      }
     } catch (err) {
       console.error("Failed fetching positions:", err);
     }
@@ -104,7 +157,9 @@ export const useTradingStore = create<TradingState>((set, get) => ({
   fetchOrders: async () => {
     try {
       const data = await ordersApi.getOrders();
-      set({ orders: data });
+      if (Array.isArray(data)) {
+        set({ orders: data });
+      }
     } catch (err) {
       console.error("Failed fetching orders:", err);
     }
@@ -278,24 +333,37 @@ export const useTradingStore = create<TradingState>((set, get) => ({
         }
         return algo;
       });
+      persistAlgos(updated);
       return { algos: updated };
+    });
+    algosApi.updateAlgoStatus(algoId, status).catch((err) => {
+      console.warn("Backend status update failed, local storage updated:", err);
     });
   },
 
   addAlgorithm: (algo) => {
-    set((state) => ({ algos: [algo, ...state.algos] }));
+    set((state) => {
+      const updated = [algo, ...state.algos];
+      persistAlgos(updated);
+      return { algos: updated };
+    });
     get().addActivityLog(
       'Strategy Created',
       `New strategy "${algo.name}" created for ${algo.underlying}.`,
       'Algo',
       'SUCCESS'
     );
+    algosApi.createAlgo(algo).catch((err) => {
+      console.warn("Backend createAlgo failed, saved to local storage:", err);
+    });
   },
 
   updateAlgorithm: (algo) => {
-    set((state) => ({
-      algos: state.algos.map((a) => (a.id === algo.id ? algo : a))
-    }));
+    set((state) => {
+      const updated = state.algos.map((a) => (a.id === algo.id ? algo : a));
+      persistAlgos(updated);
+      return { algos: updated };
+    });
   },
 
   deleteAlgorithm: (algoId) => {
@@ -310,9 +378,15 @@ export const useTradingStore = create<TradingState>((set, get) => ({
         'WARNING'
       );
 
+      const updated = state.algos.filter((a) => a.id !== algoId);
+      persistAlgos(updated);
+
       return {
-        algos: state.algos.filter((a) => a.id !== algoId)
+        algos: updated
       };
+    });
+    algosApi.deleteAlgo(algoId).catch((err) => {
+      console.warn("Backend deleteAlgo failed, removed from local storage:", err);
     });
   },
 

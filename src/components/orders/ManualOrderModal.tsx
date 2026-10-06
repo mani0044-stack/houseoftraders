@@ -13,7 +13,9 @@ import {
   Copy, 
   Layers,
   ArrowRight,
-  Users
+  Users,
+  Sparkles,
+  Flame
 } from 'lucide-react';
 import { useUIStore } from '../../store/useUIStore';
 import { useTradingStore } from '../../store/useTradingStore';
@@ -33,6 +35,15 @@ export interface BasketLeg {
   lotSize: number;
   price: number;
 }
+
+export const ASSET_PRESETS = [
+  { name: 'NIFTY 50', symbol: 'NIFTY26SEP2424850CE', lotSize: 50 },
+  { name: 'BANK NIFTY', symbol: 'BANKNIFTY26SEP2453000CE', lotSize: 15 },
+  { name: 'FIN NIFTY', symbol: 'FINNIFTY24SEP2423600CE', lotSize: 40 },
+  { name: 'SENSEX', symbol: 'SENSEX27SEP2481500CE', lotSize: 10 },
+  { name: 'CRUDE OIL', symbol: 'CRUDEOIL24OCTFUT', lotSize: 100 },
+  { name: 'NATURAL GAS', symbol: 'NATURALGAS24OCTFUT', lotSize: 1250 },
+];
 
 export const ManualOrderModal: React.FC = () => {
   const isManualOrderOpen = useUIStore((s) => s.isManualOrderOpen);
@@ -129,7 +140,7 @@ export const ManualOrderModal: React.FC = () => {
     setSearchQuery(inst.symbol);
     setShowDropdown(false);
 
-    const lot = inst.lotsize || (inst.symbol.includes('BANKNIFTY') ? 15 : inst.symbol.includes('FINNIFTY') ? 40 : inst.symbol.includes('NIFTY') ? 50 : 1);
+    const lot = inst.lotsize || (inst.symbol.includes('BANKNIFTY') ? 15 : inst.symbol.includes('FINNIFTY') ? 40 : inst.symbol.includes('SENSEX') ? 10 : inst.symbol.includes('CRUDEOIL') ? 100 : inst.symbol.includes('NIFTY') ? 50 : 1);
     setLotSize(lot);
     setQuantity(lot);
   };
@@ -139,19 +150,19 @@ export const ManualOrderModal: React.FC = () => {
   };
 
   // Basket Leg Management
-  const handleAddBasketLeg = () => {
+  const handleAddBasketLeg = (defaultSymbol: string = 'NIFTY26SEP2424850CE', defaultLotSize: number = 50) => {
     const newLeg: BasketLeg = {
       id: `leg-${Date.now()}`,
       side: 'BUY',
-      symbol: 'NIFTY26SEP2424850CE',
-      searchQuery: '',
+      symbol: defaultSymbol,
+      searchQuery: defaultSymbol,
       searchResults: [],
       isSearching: false,
       showDropdown: false,
       orderType: 'MARKET',
       productType: 'CARRYFORWARD',
-      quantity: 50,
-      lotSize: 50,
+      quantity: defaultLotSize,
+      lotSize: defaultLotSize,
       price: 0.0
     };
     setBasketLegs([...basketLegs, newLeg]);
@@ -193,7 +204,7 @@ export const ManualOrderModal: React.FC = () => {
   };
 
   const handleSelectLegInstrument = (legId: string, inst: InstrumentSearchResult) => {
-    const lot = inst.lotsize || (inst.symbol.includes('BANKNIFTY') ? 15 : inst.symbol.includes('FINNIFTY') ? 40 : inst.symbol.includes('NIFTY') ? 50 : 1);
+    const lot = inst.lotsize || (inst.symbol.includes('BANKNIFTY') ? 15 : inst.symbol.includes('FINNIFTY') ? 40 : inst.symbol.includes('SENSEX') ? 10 : inst.symbol.includes('CRUDEOIL') ? 100 : inst.symbol.includes('NIFTY') ? 50 : 1);
     handleUpdateLeg(legId, {
       symbol: inst.symbol,
       searchQuery: inst.symbol,
@@ -201,6 +212,140 @@ export const ManualOrderModal: React.FC = () => {
       lotSize: lot,
       quantity: lot
     });
+  };
+
+  // Preset Template Builders
+  const loadSensexPreset = () => {
+    setBasketName('SENSEX Weekly Call Spread');
+    setBasketLegs([
+      {
+        id: `leg-${Date.now()}-1`,
+        side: 'BUY',
+        symbol: 'SENSEX27SEP2481500CE',
+        searchQuery: 'SENSEX27SEP2481500CE',
+        searchResults: [],
+        isSearching: false,
+        showDropdown: false,
+        orderType: 'MARKET',
+        productType: 'CARRYFORWARD',
+        quantity: 10,
+        lotSize: 10,
+        price: 0.0
+      },
+      {
+        id: `leg-${Date.now()}-2`,
+        side: 'SELL',
+        symbol: 'SENSEX27SEP2482000CE',
+        searchQuery: 'SENSEX27SEP2482000CE',
+        searchResults: [],
+        isSearching: false,
+        showDropdown: false,
+        orderType: 'MARKET',
+        productType: 'CARRYFORWARD',
+        quantity: 10,
+        lotSize: 10,
+        price: 0.0
+      }
+    ]);
+    addToast('Preset Loaded', 'SENSEX Weekly Call Spread basket created.', 'info');
+  };
+
+  const loadCrudeOilPreset = () => {
+    setBasketName('CRUDE OIL MCX Commodity Spread');
+    setBasketLegs([
+      {
+        id: `leg-${Date.now()}-1`,
+        side: 'BUY',
+        symbol: 'CRUDEOIL24OCTFUT',
+        searchQuery: 'CRUDEOIL24OCTFUT',
+        searchResults: [],
+        isSearching: false,
+        showDropdown: false,
+        orderType: 'MARKET',
+        productType: 'CARRYFORWARD',
+        quantity: 100,
+        lotSize: 100,
+        price: 0.0
+      },
+      {
+        id: `leg-${Date.now()}-2`,
+        side: 'SELL',
+        symbol: 'CRUDEOIL24NOVFUT',
+        searchQuery: 'CRUDEOIL24NOVFUT',
+        searchResults: [],
+        isSearching: false,
+        showDropdown: false,
+        orderType: 'MARKET',
+        productType: 'CARRYFORWARD',
+        quantity: 100,
+        lotSize: 100,
+        price: 0.0
+      }
+    ]);
+    addToast('Preset Loaded', 'CRUDE OIL MCX Futures Spread basket created.', 'info');
+  };
+
+  const loadNiftyPreset = () => {
+    setBasketName('NIFTY 50 Iron Condor Basket');
+    setBasketLegs([
+      {
+        id: `leg-${Date.now()}-1`,
+        side: 'BUY',
+        symbol: 'NIFTY26SEP2424600PE',
+        searchQuery: 'NIFTY26SEP2424600PE',
+        searchResults: [],
+        isSearching: false,
+        showDropdown: false,
+        orderType: 'MARKET',
+        productType: 'CARRYFORWARD',
+        quantity: 50,
+        lotSize: 50,
+        price: 0.0
+      },
+      {
+        id: `leg-${Date.now()}-2`,
+        side: 'SELL',
+        symbol: 'NIFTY26SEP2424750PE',
+        searchQuery: 'NIFTY26SEP2424750PE',
+        searchResults: [],
+        isSearching: false,
+        showDropdown: false,
+        orderType: 'MARKET',
+        productType: 'CARRYFORWARD',
+        quantity: 50,
+        lotSize: 50,
+        price: 0.0
+      },
+      {
+        id: `leg-${Date.now()}-3`,
+        side: 'SELL',
+        symbol: 'NIFTY26SEP2424950CE',
+        searchQuery: 'NIFTY26SEP2424950CE',
+        searchResults: [],
+        isSearching: false,
+        showDropdown: false,
+        orderType: 'MARKET',
+        productType: 'CARRYFORWARD',
+        quantity: 50,
+        lotSize: 50,
+        price: 0.0
+      },
+      {
+        id: `leg-${Date.now()}-4`,
+        side: 'BUY',
+        symbol: 'NIFTY26SEP2425100CE',
+        searchQuery: 'NIFTY26SEP2425100CE',
+        searchResults: [],
+        isSearching: false,
+        showDropdown: false,
+        orderType: 'MARKET',
+        productType: 'CARRYFORWARD',
+        quantity: 50,
+        lotSize: 50,
+        price: 0.0
+      }
+    ]);
+    addToast('Preset Loaded', 'NIFTY 50 4-Leg Iron Condor basket created.', 'info');
   };
 
   // Single Order Submit
@@ -298,7 +443,7 @@ export const ManualOrderModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-scale font-sans">
-      <div className="bg-white border border-slate-200 rounded-3xl max-w-3xl w-full p-5 sm:p-6 shadow-2xl relative flex flex-col max-h-[92vh] overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-3xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl relative flex flex-col max-h-[92vh] overflow-hidden">
         {/* Close button */}
         <button
           onClick={() => setManualOrderOpen(false)}
@@ -321,7 +466,7 @@ export const ManualOrderModal: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-slate-500 font-medium">
-                {orderMode === 'BASKET' ? 'Angel One Basket Order Builder & Multi-Account Fan-Out Router' : 'Direct Live Order Placement via Angel One SmartAPI Router'}
+                {orderMode === 'BASKET' ? 'Angel One Basket Orders (NIFTY, BANKNIFTY, SENSEX & CRUDE OIL Commodities)' : 'Direct Live Order Placement via Angel One SmartAPI Router'}
               </p>
             </div>
           </div>
@@ -380,6 +525,29 @@ export const ManualOrderModal: React.FC = () => {
           {orderMode === 'SINGLE' ? (
             /* ================= SINGLE ORDER FORM ================= */
             <form onSubmit={handleSingleSubmit} className="space-y-4">
+              {/* Asset Quick Chips */}
+              <div>
+                <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Quick Asset Selectors</label>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {ASSET_PRESETS.map((preset) => (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      onClick={() => {
+                        setSymbol(preset.symbol);
+                        setSearchQuery(preset.symbol);
+                        setLotSize(preset.lotSize);
+                        setQuantity(preset.lotSize);
+                      }}
+                      className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 text-slate-700 text-xs font-bold border border-slate-200 transition-colors flex items-center gap-1"
+                    >
+                      {preset.name.includes('CRUDE') && <Flame className="w-3 h-3 text-amber-600" />}
+                      <span>{preset.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* BUY / SELL Side Toggle Buttons */}
               <div>
                 <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Transaction Side</label>
@@ -411,7 +579,7 @@ export const ManualOrderModal: React.FC = () => {
 
               {/* Instrument Search Autocomplete */}
               <div className="relative">
-                <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Symbol Search (SmartAPI)</label>
+                <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Symbol Search (SmartAPI Index & MCX)</label>
                 <div className="relative">
                   <input
                     type="text"
@@ -421,7 +589,7 @@ export const ManualOrderModal: React.FC = () => {
                       setSymbol(e.target.value);
                     }}
                     onFocus={() => searchQuery.length >= 2 && setShowDropdown(true)}
-                    placeholder="Search symbol (e.g. NIFTY, BANKNIFTY, RELIANCE, NIFTY26SEP2424850CE)..."
+                    placeholder="Search symbol (e.g. SENSEX, CRUDEOIL, NIFTY, BANKNIFTY)..."
                     required
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-2.5 text-xs text-slate-900 font-mono-num font-bold uppercase focus:outline-none focus:border-emerald-600"
                   />
@@ -558,6 +726,40 @@ export const ManualOrderModal: React.FC = () => {
           ) : (
             /* ================= ANGEL ONE BASKET ORDER MODE ================= */
             <div className="space-y-4">
+              {/* Asset & Presets Quick Launcher */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                  <span className="flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    Quick Asset Basket Presets (NIFTY, SENSEX & CRUDE OIL):
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={loadSensexPreset}
+                    className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs"
+                  >
+                    <span>⚡ SENSEX Call Spread</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={loadCrudeOilPreset}
+                    className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs"
+                  >
+                    <Flame className="w-3.5 h-3.5 text-amber-600" />
+                    <span>🛢️ CRUDE OIL Futures Spread</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={loadNiftyPreset}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs"
+                  >
+                    <span>📈 NIFTY 50 Iron Condor</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Basket Name Bar & Header Controls */}
               <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-emerald-950 text-white rounded-2xl">
                 <div className="flex items-center gap-2.5 flex-1 min-w-[240px]">
@@ -566,7 +768,7 @@ export const ManualOrderModal: React.FC = () => {
                     type="text"
                     value={basketName}
                     onChange={(e) => setBasketName(e.target.value)}
-                    placeholder="Basket Name (e.g., Bull Call Spread, Iron Condor)..."
+                    placeholder="Basket Name (e.g., SENSEX Spread, CRUDE OIL Hedge)..."
                     className="bg-emerald-900/60 border border-emerald-700/60 rounded-xl px-3 py-1.5 text-xs font-bold text-white placeholder-emerald-300/60 outline-none focus:border-emerald-400 w-full"
                   />
                 </div>
@@ -577,7 +779,7 @@ export const ManualOrderModal: React.FC = () => {
                   </span>
                   <button
                     type="button"
-                    onClick={handleAddBasketLeg}
+                    onClick={() => handleAddBasketLeg()}
                     className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold flex items-center gap-1 transition-all shadow-xs"
                   >
                     <Plus className="w-3.5 h-3.5 stroke-[3]" />
@@ -596,6 +798,24 @@ export const ManualOrderModal: React.FC = () => {
                           {idx + 1}
                         </span>
                         <span className="text-xs font-bold text-slate-800">Leg #{idx + 1}</span>
+                      </div>
+
+                      {/* Quick Asset Chips per Leg */}
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase mr-1">Quick Symbol:</span>
+                        {ASSET_PRESETS.map((p) => (
+                          <button
+                            key={p.name}
+                            type="button"
+                            onClick={() => {
+                              handleLegSearch(leg.id, p.symbol);
+                              handleUpdateLeg(leg.id, { lotSize: p.lotSize, quantity: p.lotSize });
+                            }}
+                            className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-emerald-100 hover:text-emerald-900 text-slate-700 transition-colors"
+                          >
+                            {p.name.split(' ')[0]}
+                          </button>
+                        ))}
                       </div>
 
                       <div className="flex items-center gap-1.5">
@@ -647,14 +867,14 @@ export const ManualOrderModal: React.FC = () => {
 
                       {/* Leg Symbol Search */}
                       <div className="sm:col-span-6 relative">
-                        <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Symbol Search</label>
+                        <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Symbol Search (Index & MCX)</label>
                         <div className="relative">
                           <input
                             type="text"
                             value={leg.searchQuery || leg.symbol}
                             onChange={(e) => handleLegSearch(leg.id, e.target.value)}
                             onFocus={() => leg.searchQuery.length >= 2 && handleUpdateLeg(leg.id, { showDropdown: true })}
-                            placeholder="e.g. NIFTY26SEP2424850CE..."
+                            placeholder="e.g. SENSEX, CRUDEOIL, NIFTY..."
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-900 font-mono-num font-bold uppercase focus:outline-none focus:border-emerald-600"
                           />
                           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />

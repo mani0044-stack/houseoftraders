@@ -11,14 +11,11 @@ import {
   Receipt, 
   History, 
   ShieldAlert, 
-  BarChart3, 
-  Gamepad2, 
   PieChart, 
   FileText, 
   Settings,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
   X
 } from 'lucide-react';
 import logoImg from '../../assets/logo.png';
@@ -36,8 +33,6 @@ const navItems = [
   { path: '/orders', label: 'Orders', icon: Receipt },
   { path: '/trade-history', label: 'Trade History', icon: History },
   { path: '/risk-manager', label: 'Risk Manager', icon: ShieldAlert, highlight: true },
-  { path: '/backtesting', label: 'Backtesting', icon: BarChart3 },
-  { path: '/paper-trading', label: 'Paper Trading', icon: Gamepad2 },
   { path: '/analytics', label: 'Analytics', icon: PieChart },
   { path: '/activity-logs', label: 'Activity Logs', icon: FileText },
   { path: '/settings', label: 'Settings', icon: Settings },

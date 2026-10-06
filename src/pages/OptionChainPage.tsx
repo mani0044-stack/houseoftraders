@@ -6,11 +6,10 @@ import { OptionChainRow } from '../types/options';
 import { optionsApi } from '../api/optionsApi';
 import { useTradingStore } from '../store/useTradingStore';
 import { useUIStore } from '../store/useUIStore';
-import { RefreshCw, BarChart2, ChevronDown, ChevronUp, Target, Sparkles, Layers } from 'lucide-react';
+import { RefreshCw, BarChart2, ChevronDown, ChevronUp, Target, Layers } from 'lucide-react';
 
 export const OptionChainPage: React.FC = () => {
   const marketQuotes = useTradingStore((s) => s.marketQuotes);
-  const setSensibullModelsOpen = useUIStore((s) => s.setSensibullModelsOpen);
 
   const [underlying, setUnderlying] = useState<UnderlyingSymbol>('NIFTY');
   const [expiries, setExpiries] = useState<string[]>(['26 SEP 2024', '03 OCT 2024', '31 OCT 2024']);
@@ -85,13 +84,13 @@ export const OptionChainPage: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <Layers className="w-5 h-5 text-emerald-600" /> Sensibull Live Option Chain Stream
+            <Layers className="w-5 h-5 text-emerald-600" /> Live Option Chain Stream
             <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-mono font-bold uppercase border border-emerald-300 flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> LIVE RELAY
             </span>
           </h1>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Real-Time Sensibull Stream (`wsrelay.sensibull.com`), Angel One Scrip Master & Black-Scholes Greeks Solver
+            Real-Time Option Chain Matrix, Angel One Scrip Master & Black-Scholes Greeks Solver
           </p>
         </div>
 
@@ -149,14 +148,6 @@ export const OptionChainPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => setSensibullModelsOpen(true)}
-            className="px-3.5 py-2 text-xs font-bold rounded-xl bg-[#062c26] hover:bg-[#0a423a] text-emerald-300 border border-emerald-800/80 flex items-center gap-1.5 transition-all shadow-xs"
-            title="Open Sensibull Strategy Models & Ingestor"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Sensibull Models</span>
-          </button>
 
           <button
             onClick={scrollToATM}

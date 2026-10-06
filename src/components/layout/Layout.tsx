@@ -12,7 +12,6 @@ import { OrderDetailsDrawer } from '../orders/OrderDetailsDrawer';
 import { useUIStore } from '../../store/useUIStore';
 import { useTradingStore } from '../../store/useTradingStore';
 import { useMarketData } from '../../hooks/useMarketData';
-import { SensibullModelsModal } from '../common/SensibullModelsModal';
 import { X, CheckCircle, AlertTriangle, Info } from 'lucide-react';
 
 export const Layout: React.FC = () => {
@@ -55,7 +54,6 @@ export const Layout: React.FC = () => {
       <ManualOrderModal />
       <OptionContractDrawer />
       <OrderDetailsDrawer />
-      <SensibullModelsModal />
 
       {/* Global Toast Container */}
       <div className="fixed bottom-4 right-4 z-50 space-y-2 max-w-sm w-full pointer-events-none">

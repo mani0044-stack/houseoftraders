@@ -8,8 +8,7 @@ import {
   Zap,
   TrendingUp,
   TrendingDown,
-  Menu,
-  Sparkles
+  Menu
 } from 'lucide-react';
 import logoImg from '../../assets/logo.png';
 import { useTradingStore } from '../../store/useTradingStore';
@@ -28,7 +27,6 @@ export const Topbar: React.FC = () => {
 
   const setLiveModeConfirmOpen = useUIStore((s) => s.setLiveModeConfirmOpen);
   const setManualOrderOpen = useUIStore((s) => s.setManualOrderOpen);
-  const setSensibullModelsOpen = useUIStore((s) => s.setSensibullModelsOpen);
   const setTradingMode = useTradingStore((s) => s.setTradingMode);
   const toggleMobileMenu = useUIStore((s) => s.toggleMobileMenu);
   const activityLogs = useTradingStore((s) => s.activityLogs);
@@ -133,16 +131,6 @@ export const Topbar: React.FC = () => {
         >
           <Zap className="w-3.5 h-3.5 fill-current" />
           <span className="hidden sm:inline">ORDER</span>
-        </button>
-
-        {/* Sensibull Models Button */}
-        <button
-          onClick={() => setSensibullModelsOpen(true)}
-          className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[#062c26] hover:bg-[#0a423a] text-emerald-300 border border-emerald-800/80 shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
-          title="Open Sensibull Strategy Models & Ingestor"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-          <span className="hidden md:inline">SENSIBULL MODELS</span>
         </button>
 
         {/* Trading Mode Switcher */}

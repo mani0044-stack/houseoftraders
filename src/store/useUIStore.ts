@@ -35,9 +35,6 @@ interface UIState {
   isLiveModeConfirmOpen: boolean;
   setLiveModeConfirmOpen: (open: boolean) => void;
 
-  isSensibullModelsOpen: boolean;
-  setSensibullModelsOpen: (open: boolean) => void;
-
   selectedContract: OptionContract | null;
   setSelectedContract: (contract: OptionContract | null) => void;
 
@@ -80,9 +77,6 @@ export const useUIStore = create<UIState>((set) => ({
 
   isLiveModeConfirmOpen: false,
   setLiveModeConfirmOpen: (open) => set({ isLiveModeConfirmOpen: open }),
-
-  isSensibullModelsOpen: false,
-  setSensibullModelsOpen: (open) => set({ isSensibullModelsOpen: open }),
 
   selectedContract: null,
   setSelectedContract: (contract) => set({ selectedContract: contract }),

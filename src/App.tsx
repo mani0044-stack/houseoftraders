@@ -12,8 +12,6 @@ import { PositionsPage } from './pages/PositionsPage';
 import { OrdersPage } from './pages/OrdersPage';
 import { TradeHistoryPage } from './pages/TradeHistoryPage';
 import { RiskManagerPage } from './pages/RiskManagerPage';
-import { BacktestingPage } from './pages/BacktestingPage';
-import { PaperTradingPage } from './pages/PaperTradingPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { ActivityLogsPage } from './pages/ActivityLogsPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -43,8 +41,6 @@ export function App() {
             <Route path="orders" element={<OrdersPage />} />
             <Route path="trade-history" element={<TradeHistoryPage />} />
             <Route path="risk-manager" element={<RiskManagerPage />} />
-            <Route path="backtesting" element={<BacktestingPage />} />
-            <Route path="paper-trading" element={<PaperTradingPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="activity-logs" element={<ActivityLogsPage />} />
             <Route path="settings" element={<SettingsPage />} />

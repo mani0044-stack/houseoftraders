@@ -3,8 +3,6 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from './components/layout/Layout';
 import { DashboardPage } from './pages/DashboardPage';
-import { LiveMarketPage } from './pages/LiveMarketPage';
-import { OptionChainPage } from './pages/OptionChainPage';
 import { AlgoManagerPage } from './pages/AlgoManagerPage';
 import { CreateAlgoPage } from './pages/CreateAlgoPage';
 import { AccountsPage } from './pages/AccountsPage';
@@ -32,8 +30,6 @@ export function App() {
         <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<DashboardPage />} />
-            <Route path="live-market" element={<LiveMarketPage />} />
-            <Route path="option-chain" element={<OptionChainPage />} />
             <Route path="create-algo" element={<CreateAlgoPage />} />
             <Route path="algo-manager" element={<AlgoManagerPage />} />
             <Route path="accounts" element={<AccountsPage />} />

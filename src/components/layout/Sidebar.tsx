@@ -2,8 +2,6 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, 
-  TrendingUp, 
-  Layers, 
   Cpu, 
   Sliders, 
   Users, 
@@ -24,8 +22,6 @@ import { useUIStore } from '../../store/useUIStore';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/live-market', label: 'Live Market', icon: TrendingUp },
-  { path: '/option-chain', label: 'Option Chain', icon: Layers },
   { path: '/create-algo', label: 'Strategies', icon: Cpu },
   { path: '/algo-manager', label: 'Algo Manager', icon: Sliders },
   { path: '/accounts', label: 'Accounts', icon: Users },

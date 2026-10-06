@@ -6,8 +6,6 @@ import {
   Activity, 
   Lock, 
   Zap,
-  TrendingUp,
-  TrendingDown,
   Menu
 } from 'lucide-react';
 import logoImg from '../../assets/logo.png';
@@ -20,7 +18,6 @@ export const Topbar: React.FC = () => {
   const selectedAccountId = useTradingStore((s) => s.selectedAccountId);
   const setSelectedAccountId = useTradingStore((s) => s.setSelectedAccountId);
   const accounts = useTradingStore((s) => s.accounts);
-  const marketQuotes = useTradingStore((s) => s.marketQuotes);
   const wsConnected = useTradingStore((s) => s.wsConnected);
   const wsLatencyMs = useTradingStore((s) => s.wsLatencyMs);
   const backendConnected = useTradingStore((s) => s.backendConnected);
@@ -51,12 +48,9 @@ export const Topbar: React.FC = () => {
     }
   };
 
-  const nifty = marketQuotes['NIFTY'];
-  const banknifty = marketQuotes['BANKNIFTY'];
-
   return (
     <header className="h-16 bg-white border-b border-slate-200/80 flex items-center justify-between px-3 md:px-5 sticky top-0 z-20 shrink-0 shadow-xs">
-      {/* Left: Mobile Menu Toggle & Ticker Summary */}
+      {/* Left: Mobile Menu Toggle & System Time */}
       <div className="flex items-center gap-2.5">
         <button
           onClick={toggleMobileMenu}
@@ -66,32 +60,7 @@ export const Topbar: React.FC = () => {
           <Menu className="w-5 h-5" />
         </button>
 
-        <div className="flex items-center gap-2">
-          {/* NIFTY 50 Pill */}
-          <div className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-slate-300 transition-colors text-xs">
-            <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider">NIFTY</span>
-            {nifty && (
-              <span className={`font-mono-num font-bold flex items-center gap-1 text-xs ${nifty.change >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {nifty.ltp.toFixed(1)}
-                {nifty.change >= 0 ? <TrendingUp className="w-3 h-3 shrink-0" /> : <TrendingDown className="w-3 h-3 shrink-0" />}
-              </span>
-            )}
-          </div>
-
-          {/* BANKNIFTY Pill */}
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-slate-300 transition-colors">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">BANKNIFTY</span>
-            {banknifty && (
-              <span className={`text-xs font-mono-num font-bold flex items-center gap-1 ${banknifty.change >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {banknifty.ltp.toFixed(2)}
-                {banknifty.change >= 0 ? <TrendingUp className="w-3 h-3 shrink-0" /> : <TrendingDown className="w-3 h-3 shrink-0" />}
-                <span className="text-[11px]">({banknifty.change >= 0 ? '+' : ''}{banknifty.changePercent}%)</span>
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="hidden lg:block border-l border-slate-200 pl-3">
+        <div className="hidden lg:block">
           <span className="text-xs font-mono-num text-slate-500 font-medium">{timeStr}</span>
         </div>
       </div>

@@ -1,19 +1,21 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  
   theme: {
     extend: {
       colors: {
         deepsea: {
-          DEFAULT: '#2563EB',
-          hover: '#1D4ED8',
-          dark: '#1E40AF',
-          light: '#3B82F6',
-          bg: 'rgba(37, 99, 235, 0.08)',
-          border: 'rgba(37, 99, 235, 0.2)',
+          DEFAULT: '#0F6B5C',
+          hover: '#0B5347',
+          dark: '#083D34',
+          light: '#14876F',
+          bg: 'rgba(15, 107, 92, 0.08)',
+          border: 'rgba(15, 107, 92, 0.2)',
         },
         slate: {
           bg: '#FFFFFF',
@@ -44,11 +46,11 @@ export default {
           border: '#FDE68A',
         },
         brand: {
-          DEFAULT: '#2563EB',
-          hover: '#1D4ED8',
-          light: '#3B82F6',
+          DEFAULT: '#0F6B5C',
+          hover: '#0B5347',
+          light: '#14876F',
           blue: '#2563EB',
-          bg: '#EFF6FF',
+          bg: '#ECFAF6',
         }
       },
       fontFamily: {

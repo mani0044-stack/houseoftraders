@@ -9,42 +9,42 @@ export const RecentOrdersPanel: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs flex flex-col h-full">
-      <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 mb-3.5">
+    <div className="bg-white border border-[#E3E8E6] rounded-2xl p-5 shadow-xs flex flex-col h-full">
+      <div className="flex items-center justify-between pb-3.5 border-b border-[#E3E8E6] mb-1">
         <div>
-          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Recent Orders</h3>
-          <p className="text-xs text-slate-500 font-medium">Live Broker Order Stream</p>
+          <h3 className="text-xs font-bold text-[#12211C] uppercase tracking-wider">Recent Orders</h3>
+          <p className="text-xs text-[#6B7C75] font-medium">Live Broker Order Stream</p>
         </div>
         <button
           onClick={() => navigate('/orders')}
-          className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
+          className="text-xs font-semibold text-[#0F6B5C] hover:text-[#0B5347] hover:underline flex items-center gap-1"
         >
           <span>All Orders</span>
           <ExternalLink className="w-3 h-3" />
         </button>
       </div>
 
-      <div className="space-y-2.5 overflow-y-auto max-h-[300px] pr-1 custom-scrollbar">
+      <div className="flex flex-col overflow-y-auto max-h-[300px] pr-1 custom-scrollbar">
         {orders.slice(0, 5).map((order) => (
           <div
             key={order.id}
-            className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 hover:border-slate-300 transition-colors flex items-center justify-between text-xs font-sans"
+            className="py-3 border-b border-[#E3E8E6] last:border-b-0 text-xs font-sans"
           >
-            <div>
-              <div className="flex items-center gap-2">
-                <span className={`font-bold font-mono-num ${order.side === 'BUY' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {order.side} {order.quantity} QTY
-                </span>
-                <span className="font-bold text-slate-900">{order.symbol}</span>
-              </div>
-              <div className="text-[11px] text-slate-400 mt-0.5 font-medium">
-                {order.accountName} • {order.timestamp}
-              </div>
+            <div className="flex items-start justify-between gap-2">
+              <span className="font-bold text-[#12211C] text-sm min-w-0 truncate">{order.symbol}</span>
+              <span className={`font-bold font-mono-num shrink-0 ${order.side === 'BUY' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {order.side} {order.quantity} QTY
+              </span>
             </div>
 
-            <div className="flex items-center gap-3">
-              <span className="text-slate-900 font-bold font-mono-num">₹{order.price}</span>
-              <StatusBadge status={order.status} size="sm" />
+            <div className="mt-1.5 flex items-center justify-between gap-2">
+              <div className="text-[11px] text-[#6B7C75] font-medium min-w-0 truncate">
+                {order.accountName} • {order.timestamp}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[#12211C] font-bold font-mono-num">₹{order.price}</span>
+                <StatusBadge status={order.status} size="sm" />
+              </div>
             </div>
           </div>
         ))}

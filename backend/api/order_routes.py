@@ -60,11 +60,16 @@ def get_orders(db: Session = Depends(get_db)):
       totp_secret = vault.decrypt(acc.encrypted_totp_secret) if acc.encrypted_totp_secret else ""
       
       session = session_manager.get_or_create_session(acc.id, acc.client_id, api_key, pin, totp_secret)
+      if session.status != "CONNECTED":
+        session.authenticate()
+
       if session.status == "CONNECTED":
         live_orders = session.fetch_orders()
         for lo in live_orders:
           b_id = str(lo.get("orderid") or lo.get("brokerorderid") or "")
           if b_id and not any(r["brokerOrderId"] == b_id for r in result):
+            raw_status = str(lo.get("status", "COMPLETED")).upper()
+            mapped_status = "COMPLETED" if raw_status in ["COMPLETE", "COMPLETED"] else "CANCELLED" if raw_status in ["CANCELLED", "CANCELED"] else "REJECTED" if raw_status in ["REJECTED", "REJECT"] else "PENDING"
             result.append({
               "id": f"live-{b_id}",
               "brokerOrderId": b_id,
@@ -74,12 +79,12 @@ def get_orders(db: Session = Depends(get_db)):
               "algoId": "MANUAL-LIVE",
               "algoName": "Angel One Live Sync",
               "symbol": lo.get("tradingsymbol", ""),
-              "side": lo.get("transactiontype", "BUY"),
+              "side": str(lo.get("transactiontype", "BUY")).upper(),
               "quantity": int(lo.get("quantity", 0) or 0),
-              "orderType": lo.get("ordertype", "MARKET"),
+              "orderType": str(lo.get("ordertype", "MARKET")).upper(),
               "price": float(lo.get("price", 0.0) or 0.0),
               "averagePrice": float(lo.get("averageprice", 0.0) or lo.get("price", 0.0) or 0.0),
-              "status": (lo.get("status") or "COMPLETED").upper(),
+              "status": mapped_status,
               "timeline": {"placed": "Live SmartAPI Sync"}
             })
 

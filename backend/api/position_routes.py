@@ -47,12 +47,15 @@ def get_positions(db: Session = Depends(get_db)):
       totp_secret = vault.decrypt(acc.encrypted_totp_secret) if acc.encrypted_totp_secret else ""
       
       session = session_manager.get_or_create_session(acc.id, acc.client_id, api_key, pin, totp_secret)
+      if session.status != "CONNECTED":
+        session.authenticate()
+
       if session.status == "CONNECTED":
         live_pos = session.fetch_positions()
         for lp in live_pos:
-          net_qty = int(lp.get("netqty", 0) or 0)
+          net_qty = int(lp.get("netqty", 0) or lp.get("buyqty", 0) or 0)
           sym = lp.get("tradingsymbol", "")
-          if sym and net_qty != 0:
+          if sym:
             if not any(r["symbol"] == sym and r["accountId"] == acc.id for r in result):
               avg_p = float(lp.get("avgprice", 0.0) or lp.get("buyavgprice", 0.0) or 0.0)
               ltp = float(lp.get("ltp", 0.0) or avg_p)
@@ -75,7 +78,7 @@ def get_positions(db: Session = Depends(get_db)):
                 "realizedPnL": float(lp.get("realisedpnl", 0.0) or 0.0),
                 "algoId": "LIVE-SYNC",
                 "algoName": "Angel One Live Sync",
-                "status": "OPEN",
+                "status": "OPEN" if net_qty != 0 else "CLOSED",
                 "entryTime": "Live"
               })
 

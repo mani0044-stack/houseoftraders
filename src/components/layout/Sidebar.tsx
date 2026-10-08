@@ -27,6 +27,7 @@ import { useUIStore } from '../../store/useUIStore';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/smartapi-fo', label: 'SmartAPI F&O Hub', icon: Sparkles, highlight: true },
   { path: '/live-market', label: 'Live Market', icon: TrendingUp },
   { path: '/option-chain', label: 'Option Chain', icon: Layers },
   { path: '/create-algo', label: 'Strategies', icon: Cpu },
@@ -35,7 +36,7 @@ const navItems = [
   { path: '/positions', label: 'Positions', icon: Briefcase },
   { path: '/orders', label: 'Orders', icon: Receipt },
   { path: '/trade-history', label: 'Trade History', icon: History },
-  { path: '/risk-manager', label: 'Risk Manager', icon: ShieldAlert, highlight: true },
+  { path: '/risk-manager', label: 'Risk Manager', icon: ShieldAlert },
   { path: '/backtesting', label: 'Backtesting', icon: BarChart3 },
   { path: '/paper-trading', label: 'Paper Trading', icon: Gamepad2 },
   { path: '/analytics', label: 'Analytics', icon: PieChart },

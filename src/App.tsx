@@ -13,6 +13,7 @@ import { RiskManagerPage } from './pages/RiskManagerPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { ActivityLogsPage } from './pages/ActivityLogsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { SmartApiTerminalPage } from './pages/SmartApiTerminalPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,6 +31,7 @@ export function App() {
         <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<DashboardPage />} />
+            <Route path="smartapi-fo" element={<SmartApiTerminalPage />} />
             <Route path="create-algo" element={<CreateAlgoPage />} />
             <Route path="algo-manager" element={<AlgoManagerPage />} />
             <Route path="accounts" element={<AccountsPage />} />

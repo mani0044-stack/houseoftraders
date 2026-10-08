@@ -28,6 +28,11 @@ export const ordersApi = {
     return res.data;
   },
 
+  placeFoOrder: async (payload: any): Promise<any> => {
+    const res = await axiosClient.post<any>('/orders/place_fo', payload);
+    return res.data;
+  },
+
   cancelOrder: async (orderId: string): Promise<boolean> => {
     try {
       await axiosClient.post(`/orders/${orderId}/cancel`);

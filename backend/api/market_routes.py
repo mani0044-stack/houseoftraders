@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Query
 from typing import List, Dict, Any, Optional
+from datetime import datetime
 from backend.engine.instrument_service import instrument_service
 from backend.broker.angel_session import session_manager
 
@@ -214,5 +215,27 @@ def lookup_scrip_endpoint(payload: Dict[str, Any]):
         return {"status": "SUCCESS", "data": res}
     except Exception as e:
         return {"status": "FAILED", "error": str(e)}
+
+
+from backend.engine.option_chain_service import option_chain_service
+
+@router.get("/options/expiries")
+def get_option_expiries(underlying: str = "NIFTY"):
+    return option_chain_service.get_available_expiries(underlying)
+
+@router.get("/options/chain")
+def get_option_chain(
+    underlying: str = "NIFTY",
+    expiry: Optional[str] = None,
+    spot: Optional[float] = None,
+    strikes_range: int = 15
+):
+    return option_chain_service.get_option_chain_matrix(
+        underlying=underlying,
+        expiry=expiry,
+        spot_price=spot,
+        num_strikes=strikes_range
+    )
+
 
 

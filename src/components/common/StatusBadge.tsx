@@ -30,8 +30,8 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       : 'bg-amber-50 text-amber-800 border-amber-200/80';
   } else if (['PAPER', 'INFO', 'CONNECTING'].includes(upper)) {
     colorClasses = variant === 'solid' 
-      ? 'bg-blue-600 text-white font-semibold' 
-      : 'bg-blue-50 text-blue-700 border-blue-200/80';
+      ? 'bg-[#0F6B5C] text-white font-semibold' 
+      : 'bg-[#E8F3F0] text-[#0F6B5C] border-[#0F6B5C]/25';
   }
 
   const sizeClasses = size === 'sm' ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs font-medium';

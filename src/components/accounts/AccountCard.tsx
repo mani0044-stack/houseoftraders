@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { TradingAccount } from '../../types/account';
 import { StatusBadge } from '../common/StatusBadge';
-import { Lock, Activity, ShieldCheck, Power, Trash2, RefreshCw, Edit, AlertTriangle } from 'lucide-react';
+import { Lock, ShieldCheck, Power, Trash2, RefreshCw, Edit, AlertTriangle, MoreVertical } from 'lucide-react';
 import { useTradingStore } from '../../store/useTradingStore';
 import { useUIStore } from '../../store/useUIStore';
 import { ConfirmationModal } from '../common/ConfirmationModal';
@@ -9,6 +9,15 @@ import { ConfirmationModal } from '../common/ConfirmationModal';
 interface AccountCardProps {
   account: TradingAccount;
   onViewDetails?: (account: TradingAccount) => void;
+}
+
+// Masks a client ID for display, e.g. "ANGEL1234589" -> "ANGEL-****89"
+function maskClientId(clientId: string): string {
+  if (!clientId || clientId.length <= 6) return clientId;
+  const visibleStart = clientId.slice(0, Math.min(5, clientId.length - 2));
+  const visibleEnd = clientId.slice(-2);
+  const maskLength = Math.max(clientId.length - visibleStart.length - visibleEnd.length, 4);
+  return `${visibleStart}${'*'.repeat(maskLength)}${visibleEnd}`;
 }
 
 export const AccountCard: React.FC<AccountCardProps> = ({ account, onViewDetails }) => {
@@ -20,8 +29,10 @@ export const AccountCard: React.FC<AccountCardProps> = ({ account, onViewDetails
 
   const [isTesting, setIsTesting] = useState<boolean>(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
 
   const isAuthRequired = account.status === 'Disconnected' || account.status === 'Error';
+  const isProfit = account.todaysPnL >= 0;
 
   const handleTestConnection = async () => {
     setIsTesting(true);
@@ -41,12 +52,13 @@ export const AccountCard: React.FC<AccountCardProps> = ({ account, onViewDetails
 
   const handleDelete = () => {
     deleteAccount(account.id);
-    addToast('Account Deleted', `Trading account ${account.name} (${account.clientId}) was deleted.`, 'warning');
+    addToast('Account Deleted', `Trading account ${account.name} (${maskClientId(account.clientId)}) was deleted.`, 'warning');
   };
 
   return (
     <>
-      <div className={`bg-white border rounded-2xl p-5 hover:shadow-md transition-all flex flex-col justify-between ${
+
+      <div className={`bg-white border rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between ${
         isAuthRequired ? 'border-amber-300 ring-2 ring-amber-200/60' : 'border-slate-200/90 hover:border-slate-300'
       }`}>
         <div>
@@ -58,7 +70,7 @@ export const AccountCard: React.FC<AccountCardProps> = ({ account, onViewDetails
                 <StatusBadge status={account.status} size="sm" />
               </div>
               <p className="text-xs font-mono-num text-slate-500 font-medium mt-0.5">
-                Client ID: <span className="text-slate-800 font-bold">{account.clientId}</span>
+                Client ID: <span className="text-slate-800 font-bold" title="Masked for security">{maskClientId(account.clientId)}</span>
               </p>
             </div>
 
@@ -81,14 +93,14 @@ export const AccountCard: React.FC<AccountCardProps> = ({ account, onViewDetails
                   <button
                     onClick={handleTestConnection}
                     disabled={isTesting}
-                    className="px-2.5 py-1.5 text-[11px] font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-lg shadow-xs flex items-center gap-1"
+                    className="px-2.5 py-1.5 text-[11px] font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-lg shadow-xs flex items-center gap-1 transition-colors"
                   >
                     <RefreshCw className={`w-3 h-3 ${isTesting ? 'animate-spin' : ''}`} />
                     <span>Test Connection</span>
                   </button>
                   <button
                     onClick={() => setAddAccountOpen(true, account)}
-                    className="px-2.5 py-1.5 text-[11px] font-semibold bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg flex items-center gap-1"
+                    className="px-2.5 py-1.5 text-[11px] font-semibold bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg flex items-center gap-1 transition-colors"
                   >
                     <Edit className="w-3 h-3" />
                     <span>Edit Secrets</span>
@@ -115,15 +127,17 @@ export const AccountCard: React.FC<AccountCardProps> = ({ account, onViewDetails
           <div className="grid grid-cols-2 gap-3 mt-4">
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
               <span className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">Available Margin</span>
-              <p className="text-sm font-bold font-mono-num text-slate-900 mt-0.5">
+              <p className="text-base font-bold font-mono-num text-slate-900 mt-0.5">
                 ₹{account.availableMargin.toLocaleString()}
               </p>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            <div className={`p-3.5 rounded-xl border transition-colors ${
+              isProfit ? 'bg-emerald-50/60 border-emerald-200/60' : 'bg-rose-50/60 border-rose-200/60'
+            }`}>
               <span className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">Today's P&L</span>
-              <p className={`text-sm font-bold font-mono-num mt-0.5 ${account.todaysPnL >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {account.todaysPnL >= 0 ? '+' : ''}₹{account.todaysPnL.toLocaleString()}
+              <p className={`text-base font-bold font-mono-num mt-0.5 ${isProfit ? 'text-emerald-700' : 'text-rose-700'}`}>
+                {isProfit ? '+' : ''}₹{account.todaysPnL.toLocaleString()}
               </p>
             </div>
           </div>
@@ -138,7 +152,10 @@ export const AccountCard: React.FC<AccountCardProps> = ({ account, onViewDetails
         {/* Footer Controls */}
         <div className="mt-5 pt-3.5 border-t border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-mono-num font-medium">
-            <Activity className="w-3 h-3 text-emerald-500 animate-pulse" />
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
             <span>{account.lastHeartbeat}</span>
           </div>
 
@@ -147,7 +164,7 @@ export const AccountCard: React.FC<AccountCardProps> = ({ account, onViewDetails
               <button
                 onClick={handleTestConnection}
                 disabled={isTesting}
-                className="p-1.5 text-xs text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 rounded-lg transition-colors flex items-center gap-1 font-mono"
+                className="p-1.5 text-xs text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 rounded-lg transition-colors flex items-center gap-1"
                 title="Test Broker Session Connection"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isTesting ? 'animate-spin' : ''}`} />
@@ -183,13 +200,35 @@ export const AccountCard: React.FC<AccountCardProps> = ({ account, onViewDetails
               <span>{account.isEnabled ? 'Disable' : 'Enable'}</span>
             </button>
 
-            <button
-              onClick={() => setIsDeleteModalOpen(true)}
-              className="p-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white border border-rose-200/80 transition-colors"
-              title="Delete Account"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            {/* Delete moved into a kebab menu to keep it out of the primary action row */}
+            <div className="relative">
+              <button
+                onClick={() => setIsMenuOpen((prev) => !prev)}
+                className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200/80 hover:text-slate-700 transition-colors"
+                title="More options"
+              >
+                <MoreVertical className="w-3.5 h-3.5" />
+              </button>
+
+              {isMenuOpen && (
+                <>
+                  {/* click-outside overlay */}
+                  <div className="fixed inset-0 z-10" onClick={() => setIsMenuOpen(false)} />
+                  <div className="absolute right-0 bottom-full mb-2 w-40 bg-white border border-slate-200 rounded-lg shadow-lg py-1 z-20 animate-fade-scale">
+                    <button
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        setIsDeleteModalOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete Account
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -200,7 +239,7 @@ export const AccountCard: React.FC<AccountCardProps> = ({ account, onViewDetails
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleDelete}
         title={`Delete Account "${account.name}"?`}
-        description={`Are you sure you want to delete trading account ${account.clientId}? It will be removed from all active strategy matrices.`}
+        description={`Are you sure you want to delete trading account ${maskClientId(account.clientId)}? It will be removed from all active strategy matrices.`}
         confirmText="Delete Account"
         confirmVariant="danger"
       />

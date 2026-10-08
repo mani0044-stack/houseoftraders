@@ -127,26 +127,14 @@ export const SmartApiTerminalPage: React.FC = () => {
       setOrderResponse(data);
 
       if (data.status === 'SUCCESS') {
-        addToast({
-          type: 'success',
-          title: 'F&O Order Placed Successfully',
-          message: `Broker Order ID: ${data.order_id}`
-        });
+        addToast('F&O Order Placed Successfully', `Broker Order ID: ${data.order_id}`, 'success');
       } else {
-        addToast({
-          type: 'error',
-          title: 'Order Placement Rejected',
-          message: data.error || 'Failed to execute order via SmartAPI.'
-        });
+        addToast('Order Placement Rejected', data.error || 'Failed to execute order via SmartAPI.', 'error');
       }
     } catch (err: any) {
       const errStr = err.message || 'Network error executing order.';
       setOrderResponse({ status: 'FAILED', error: errStr });
-      addToast({
-        type: 'error',
-        title: 'Execution Exception',
-        message: errStr
-      });
+      addToast('Execution Exception', errStr, 'error');
     } finally {
       setOrderLoading(false);
     }
@@ -180,24 +168,12 @@ export const SmartApiTerminalPage: React.FC = () => {
       const data = await resp.json();
       if (data.status === 'SUCCESS' && data.candles) {
         setCandleData(data.candles);
-        addToast({
-          type: 'info',
-          title: 'Candle Data Loaded',
-          message: `Fetched ${data.candles.length} historical candles.`
-        });
+        addToast('Candle Data Loaded', `Fetched ${data.candles.length} historical candles.`, 'info');
       } else {
-        addToast({
-          type: 'warning',
-          title: 'Candle Fetch Notice',
-          message: data.error || 'No candles returned for selected parameters.'
-        });
+        addToast('Candle Fetch Notice', data.error || 'No candles returned for selected parameters.', 'warning');
       }
     } catch (err: any) {
-      addToast({
-        type: 'error',
-        title: 'Error Loading Candles',
-        message: err.message || 'Failed to fetch historical candles.'
-      });
+      addToast('Error Loading Candles', err.message || 'Failed to fetch historical candles.', 'error');
     } finally {
       setCandleLoading(false);
     }

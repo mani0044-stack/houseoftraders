@@ -1217,6 +1217,84 @@ export const ManualOrderModal: React.FC = () => {
                         </div>
                       </div>
 
+                      {/* Option Builder Parameters per Leg (Call/Put, Expiry & Strike Price) */}
+                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/90 grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Option Type (Call / Put)</label>
+                          <div className="grid grid-cols-2 gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const optType = 'CE';
+                                const legExp = leg.expiry || '26 SEP 2024';
+                                const legStrk = leg.strikePrice || 24850;
+                                const legUnd = leg.underlying || 'NIFTY';
+                                const newSym = constructOptionSymbol(legUnd, legExp, legStrk, optType);
+                                handleUpdateLeg(leg.id, { optionType: optType, symbol: newSym, searchQuery: newSym });
+                              }}
+                              className={`py-1 text-[11px] font-bold rounded-lg transition-all ${
+                                (leg.optionType || 'CE') === 'CE' ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-white border border-slate-200 text-slate-700'
+                              }`}
+                            >
+                              CALL (CE)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const optType = 'PE';
+                                const legExp = leg.expiry || '26 SEP 2024';
+                                const legStrk = leg.strikePrice || 24850;
+                                const legUnd = leg.underlying || 'NIFTY';
+                                const newSym = constructOptionSymbol(legUnd, legExp, legStrk, optType);
+                                handleUpdateLeg(leg.id, { optionType: optType, symbol: newSym, searchQuery: newSym });
+                              }}
+                              className={`py-1 text-[11px] font-bold rounded-lg transition-all ${
+                                leg.optionType === 'PE' ? 'bg-rose-600 text-white shadow-2xs' : 'bg-white border border-slate-200 text-slate-700'
+                              }`}
+                            >
+                              PUT (PE)
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Expiry Date</label>
+                          <select
+                            value={leg.expiry || '26 SEP 2024'}
+                            onChange={(e) => {
+                              const newExp = e.target.value;
+                              const optType = leg.optionType || 'CE';
+                              const legStrk = leg.strikePrice || 24850;
+                              const legUnd = leg.underlying || 'NIFTY';
+                              const newSym = constructOptionSymbol(legUnd, newExp, legStrk, optType);
+                              handleUpdateLeg(leg.id, { expiry: newExp, symbol: newSym, searchQuery: newSym });
+                            }}
+                            className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-800 outline-none"
+                          >
+                            {EXPIRY_OPTIONS.map((exp) => (
+                              <option key={exp} value={exp}>{exp}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">Strike Price</label>
+                          <input
+                            type="number"
+                            value={leg.strikePrice || 24850}
+                            onChange={(e) => {
+                              const newStrk = parseFloat(e.target.value) || 0;
+                              const optType = leg.optionType || 'CE';
+                              const legExp = leg.expiry || '26 SEP 2024';
+                              const legUnd = leg.underlying || 'NIFTY';
+                              const newSym = constructOptionSymbol(legUnd, legExp, newStrk, optType);
+                              handleUpdateLeg(leg.id, { strikePrice: newStrk, symbol: newSym, searchQuery: newSym });
+                            }}
+                            className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-mono-num font-bold text-slate-900 outline-none"
+                          />
+                        </div>
+                      </div>
+
                       {/* Advanced Types for Leg */}
                       <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100 text-xs">
                         <div className="flex items-center gap-1.5">

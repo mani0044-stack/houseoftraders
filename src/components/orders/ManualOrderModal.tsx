@@ -35,6 +35,10 @@ export interface BasketLeg {
   lotSize: number;
   quantity: number;
   price: number;
+  underlying?: string;
+  optionType?: 'CE' | 'PE';
+  expiry?: string;
+  strikePrice?: number;
 }
 
 export const ASSET_PRESETS = [
@@ -45,6 +49,37 @@ export const ASSET_PRESETS = [
   { name: 'CRUDE OIL', symbol: 'CRUDEOIL24OCTFUT', lotSize: 100 },
   { name: 'NATURAL GAS', symbol: 'NATURALGAS24OCTFUT', lotSize: 1250 },
 ];
+
+export const EXPIRY_OPTIONS = [
+  '26 SEP 2024',
+  '03 OCT 2024',
+  '31 OCT 2024',
+  '28 NOV 2024',
+  '26 DEC 2024'
+];
+
+export const UNDERLYING_PRESETS = [
+  { name: 'NIFTY 50', value: 'NIFTY', lotSize: 50, step: 50, defaultStrike: 24850 },
+  { name: 'BANK NIFTY', value: 'BANKNIFTY', lotSize: 15, step: 100, defaultStrike: 53000 },
+  { name: 'FIN NIFTY', value: 'FINNIFTY', lotSize: 40, step: 50, defaultStrike: 23600 },
+  { name: 'SENSEX', value: 'SENSEX', lotSize: 10, step: 100, defaultStrike: 81500 },
+  { name: 'CRUDE OIL', value: 'CRUDEOIL', lotSize: 100, step: 50, defaultStrike: 6200 }
+];
+
+export const formatExpiryCode = (exp: string) => {
+  const parts = exp.trim().split(' ');
+  if (parts.length === 3) {
+    const day = parts[0].padStart(2, '0');
+    const month = parts[1].substring(0, 3).toUpperCase();
+    const year = parts[2].substring(2, 4);
+    return `${day}${month}${year}`;
+  }
+  return exp.replace(/\s+/g, '').toUpperCase();
+};
+
+export const constructOptionSymbol = (und: string, exp: string, strk: number, optType: 'CE' | 'PE') => {
+  return `${und}${formatExpiryCode(exp)}${strk}${optType}`;
+};
 
 export const ManualOrderModal: React.FC = () => {
   const isManualOrderOpen = useUIStore((s) => s.isManualOrderOpen);
@@ -57,6 +92,13 @@ export const ManualOrderModal: React.FC = () => {
   // Execution Mode: 'SINGLE' vs 'BASKET' (Angel One Basket Mode)
   const [orderMode, setOrderMode] = useState<'SINGLE' | 'BASKET'>('SINGLE');
   const [accountId, setAccountId] = useState<string>('ALL');
+
+  // Option Builder & Instrument Selection State
+  const [selectionMode, setSelectionMode] = useState<'OPTION_BUILDER' | 'CUSTOM_SEARCH'>('OPTION_BUILDER');
+  const [underlying, setUnderlying] = useState<string>('NIFTY');
+  const [optionType, setOptionType] = useState<'CE' | 'PE'>('CE');
+  const [expiry, setExpiry] = useState<string>('26 SEP 2024');
+  const [strikePrice, setStrikePrice] = useState<number>(24850);
 
   // Single Order State
   const [symbol, setSymbol] = useState<string>('NIFTY26SEP2424850CE');
@@ -71,6 +113,42 @@ export const ManualOrderModal: React.FC = () => {
   const [orderType, setOrderType] = useState<'MARKET' | 'LIMIT'>('MARKET');
   const [productType, setProductType] = useState<'CARRYFORWARD' | 'INTRADAY' | 'DELIVERY'>('CARRYFORWARD');
   const [price, setPrice] = useState<number>(0.0);
+
+  // Auto update symbol when Option Builder parameters change
+  useEffect(() => {
+    if (selectionMode === 'OPTION_BUILDER') {
+      const builtSymbol = constructOptionSymbol(underlying, expiry, strikePrice, optionType);
+      setSymbol(builtSymbol);
+      setSearchQuery(builtSymbol);
+      const preset = UNDERLYING_PRESETS.find((u) => u.value === underlying);
+      if (preset) {
+        setLotSize(preset.lotSize);
+      }
+    }
+  }, [selectionMode, underlying, optionType, expiry, strikePrice]);
+
+  const handleUnderlyingChange = (newUnd: string) => {
+    setUnderlying(newUnd);
+    const preset = UNDERLYING_PRESETS.find((u) => u.value === newUnd);
+    if (preset) {
+      setStrikePrice(preset.defaultStrike);
+      setLotSize(preset.lotSize);
+    }
+  };
+
+  const adjustStrikePrice = (delta: number) => {
+    setStrikePrice((prev) => Math.max(50, prev + delta));
+  };
+
+  const getStrikeListForUnderlying = (und: string, centerStrike: number) => {
+    const preset = UNDERLYING_PRESETS.find((u) => u.value === und) || UNDERLYING_PRESETS[0];
+    const step = preset.step;
+    const strikes: number[] = [];
+    for (let i = -6; i <= 6; i++) {
+      strikes.push(centerStrike + i * step);
+    }
+    return strikes;
+  };
 
   // Basket Order State (Angel One Basket Mode)
   const [basketName, setBasketName] = useState<string>('Angel One Multi-Leg Basket');
@@ -593,46 +671,220 @@ export const ManualOrderModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Instrument Search Autocomplete */}
-              <div className="relative">
-                <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Symbol Search (SmartAPI Index & MCX)</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={searchQuery || symbol}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setSymbol(e.target.value);
-                    }}
-                    onFocus={() => searchQuery.length >= 2 && setShowDropdown(true)}
-                    placeholder="Search symbol (e.g. SENSEX, CRUDEOIL, NIFTY, BANKNIFTY)..."
-                    required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-2.5 text-xs text-slate-900 font-mono-num font-bold uppercase focus:outline-none focus:border-emerald-600"
-                  />
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                  {isSearching && <RefreshCw className="w-4 h-4 text-emerald-600 animate-spin absolute right-3 top-3" />}
+              {/* Instrument Selection Mode Toggle */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs uppercase text-slate-500 font-bold tracking-wider">Instrument Selection Mode</label>
+                  <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    Option Contract Builder Enabled
+                  </span>
                 </div>
-
-                {/* Dropdown search results */}
-                {showDropdown && searchResults.length > 0 && (
-                  <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-48 overflow-y-auto custom-scrollbar">
-                    {searchResults.map((inst, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => handleSelectInstrument(inst)}
-                        className="w-full px-3.5 py-2.5 text-left hover:bg-emerald-50/60 border-b border-slate-100 last:border-b-0 flex items-center justify-between text-xs font-sans"
-                      >
-                        <div>
-                          <span className="font-bold text-slate-900">{inst.symbol}</span>
-                          <span className="text-[10px] text-slate-500 ml-2 font-mono">({inst.exchange})</span>
-                        </div>
-                        <span className="text-[10px] font-semibold text-slate-600 font-mono-num">Lot: {inst.lotsize || 1}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <div className="bg-slate-100 p-1 rounded-2xl flex items-center gap-1 border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setSelectionMode('OPTION_BUILDER')}
+                    className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                      selectionMode === 'OPTION_BUILDER'
+                        ? 'bg-[#062c26] text-emerald-300 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Layers className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Option Contract Builder (Expiry, Strike & CE/PE)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectionMode('CUSTOM_SEARCH')}
+                    className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                      selectionMode === 'CUSTOM_SEARCH'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                    <span>Custom Symbol Search</span>
+                  </button>
+                </div>
               </div>
+
+              {selectionMode === 'OPTION_BUILDER' ? (
+                /* ================= OPTION CONTRACT BUILDER ================= */
+                <div className="p-4 rounded-2xl bg-emerald-950/5 border border-emerald-800/20 space-y-4">
+                  {/* Underlying Index Selection */}
+                  <div>
+                    <label className="block text-xs uppercase text-slate-600 font-bold mb-1.5 tracking-wider">Underlying Index / Asset</label>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {UNDERLYING_PRESETS.map((u) => (
+                        <button
+                          key={u.value}
+                          type="button"
+                          onClick={() => handleUnderlyingChange(u.value)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                            underlying === u.value
+                              ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs scale-[1.02]'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          {u.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Option Type (CALL vs PUT), Expiry Date & Strike Price Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Option Type: CE (CALL) or PE (PUT) */}
+                    <div>
+                      <label className="block text-xs uppercase text-slate-600 font-bold mb-1.5 tracking-wider">Option Type (Call / Put)</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setOptionType('CE')}
+                          className={`py-2 px-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all border flex items-center justify-center gap-1 ${
+                            optionType === 'CE'
+                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs scale-[1.02]'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span>CALL (CE)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setOptionType('PE')}
+                          className={`py-2 px-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all border flex items-center justify-center gap-1 ${
+                            optionType === 'PE'
+                              ? 'bg-rose-600 text-white border-rose-600 shadow-xs scale-[1.02]'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span>PUT (PE)</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expiry Date Selector */}
+                    <div>
+                      <label className="block text-xs uppercase text-slate-600 font-bold mb-1.5 tracking-wider">Expiry Date</label>
+                      <select
+                        value={expiry}
+                        onChange={(e) => setExpiry(e.target.value)}
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-emerald-600 shadow-2xs"
+                      >
+                        {EXPIRY_OPTIONS.map((exp) => (
+                          <option key={exp} value={exp}>{exp}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Strike Price Input */}
+                    <div>
+                      <label className="block text-xs uppercase text-slate-600 font-bold mb-1.5 tracking-wider">Strike Price</label>
+                      <input
+                        type="number"
+                        value={strikePrice}
+                        onChange={(e) => setStrikePrice(parseFloat(e.target.value) || 0)}
+                        step={UNDERLYING_PRESETS.find((u) => u.value === underlying)?.step || 50}
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono-num text-slate-900 font-bold focus:outline-none focus:border-emerald-600 shadow-2xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Strike Stepper & Quick Strike Controls */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-200/60">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[11px] text-slate-500 font-bold mr-1">Quick Strike Step:</span>
+                      {[-100, -50, 0, 50, 100].map((stepVal) => {
+                        const stepPreset = UNDERLYING_PRESETS.find((u) => u.value === underlying) || UNDERLYING_PRESETS[0];
+                        const defaultATM = stepPreset.defaultStrike;
+                        return (
+                          <button
+                            key={stepVal}
+                            type="button"
+                            onClick={() => {
+                              if (stepVal === 0) setStrikePrice(defaultATM);
+                              else adjustStrikePrice(stepVal);
+                            }}
+                            className="px-2 py-1 rounded-lg bg-white hover:bg-emerald-100 text-slate-800 text-[11px] font-mono-num font-bold border border-slate-200 transition-colors"
+                          >
+                            {stepVal === 0 ? 'ATM' : `${stepVal > 0 ? '+' : ''}${stepVal}`}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Strike Dropdown Selector */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] text-slate-500 font-bold">Select Strike:</span>
+                      <select
+                        value={strikePrice}
+                        onChange={(e) => setStrikePrice(Number(e.target.value))}
+                        className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-[11px] font-mono-num font-bold text-slate-800 outline-none"
+                      >
+                        {getStrikeListForUnderlying(underlying, UNDERLYING_PRESETS.find((u) => u.value === underlying)?.defaultStrike || 24850).map((st) => (
+                          <option key={st} value={st}>{st} {st === (UNDERLYING_PRESETS.find((u) => u.value === underlying)?.defaultStrike || 24850) ? '(ATM)' : ''}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Generated Option Contract Live Preview Card */}
+                  <div className="p-3 bg-[#062c26] text-white rounded-xl flex items-center justify-between shadow-xs border border-emerald-700/50">
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${optionType === 'CE' ? 'bg-emerald-500 text-slate-950' : 'bg-rose-500 text-white'}`}>
+                        {optionType === 'CE' ? 'CALL (CE)' : 'PUT (PE)'}
+                      </span>
+                      <div>
+                        <p className="text-xs font-bold font-mono tracking-wide text-emerald-300">{symbol}</p>
+                        <p className="text-[10px] text-emerald-200/80">{underlying} INDEX • Strike: {strikePrice} • Expiry: {expiry}</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold bg-emerald-900 px-2 py-1 rounded border border-emerald-700 text-emerald-200">
+                      Lot Size: {lotSize} Qty
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                /* ================= CUSTOM SYMBOL SEARCH ================= */
+                <div className="relative">
+                  <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Symbol Search (SmartAPI Index & MCX)</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={searchQuery || symbol}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setSymbol(e.target.value);
+                      }}
+                      onFocus={() => searchQuery.length >= 2 && setShowDropdown(true)}
+                      placeholder="Search symbol (e.g. SENSEX, CRUDEOIL, NIFTY, BANKNIFTY)..."
+                      required
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-2.5 text-xs text-slate-900 font-mono-num font-bold uppercase focus:outline-none focus:border-emerald-600"
+                    />
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                    {isSearching && <RefreshCw className="w-4 h-4 text-emerald-600 animate-spin absolute right-3 top-3" />}
+                  </div>
+
+                  {/* Dropdown search results */}
+                  {showDropdown && searchResults.length > 0 && (
+                    <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-48 overflow-y-auto custom-scrollbar">
+                      {searchResults.map((inst, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleSelectInstrument(inst)}
+                          className="w-full px-3.5 py-2.5 text-left hover:bg-emerald-50/60 border-b border-slate-100 last:border-b-0 flex items-center justify-between text-xs font-sans"
+                        >
+                          <div>
+                            <span className="font-bold text-slate-900">{inst.symbol}</span>
+                            <span className="text-[10px] text-slate-500 ml-2 font-mono">({inst.exchange})</span>
+                          </div>
+                          <span className="text-[10px] font-semibold text-slate-600 font-mono-num">Lot: {inst.lotsize || 1}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Order Type & Product Type */}
               <div className="grid grid-cols-2 gap-3">

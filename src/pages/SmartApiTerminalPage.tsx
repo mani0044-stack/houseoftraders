@@ -61,7 +61,7 @@ export const SmartApiTerminalPage: React.FC = () => {
     let isMounted = true;
     const fetchScripDetails = async () => {
       setScripLoading(true);
-      try: {
+      try {
         const resp = await fetch('/api/v1/market/lookup_scrip', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

@@ -24,12 +24,12 @@ export const ordersApi = {
   },
 
   createOrder: async (payload: CreateOrderRequest): Promise<any> => {
-    const res = await axiosClient.post<any>('/orders', payload);
+    const res = await axiosClient.post<any>('/orders', payload, { timeout: 30000 });
     return res.data;
   },
 
   placeFoOrder: async (payload: any): Promise<any> => {
-    const res = await axiosClient.post<any>('/orders/place_fo', payload);
+    const res = await axiosClient.post<any>('/orders/place_fo', payload, { timeout: 30000 });
     return res.data;
   },
 

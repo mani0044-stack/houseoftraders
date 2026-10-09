@@ -29,8 +29,12 @@ export const axiosClient = axios.create({
 axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Graceful error handling for missing backend / network timeouts
-    console.warn('API Call Notice (Operating in mock fallback mode):', error.message);
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      error.message = 'API Request Timed Out (10s limit exceeded). Verify that the FastAPI backend server is running and broker APIs are responding.';
+    } else if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+      error.message = 'Backend Server Unreachable. Please start the FastAPI backend on http://localhost:8000.';
+    }
+    console.warn('API Call Notice:', error.message);
     return Promise.reject(error);
   }
 );

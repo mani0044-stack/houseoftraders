@@ -41,46 +41,46 @@ def get_positions(db: Session = Depends(get_db)):
   # Supplement with live positions directly from connected Angel One accounts
   accounts = db.query(TradingAccountModel).filter(TradingAccountModel.is_enabled == True).all()
   for acc in accounts:
-    if acc.encrypted_api_key:
-      api_key = vault.decrypt(acc.encrypted_api_key)
-      pin = vault.decrypt(acc.encrypted_pin) if acc.encrypted_pin else ""
-      totp_secret = vault.decrypt(acc.encrypted_totp_secret) if acc.encrypted_totp_secret else ""
-      
-      session = session_manager.get_or_create_session(acc.id, acc.client_id, api_key, pin, totp_secret)
-      if session.status != "CONNECTED":
-        session.authenticate()
-
-      if session.status == "CONNECTED":
-        live_pos = session.fetch_positions()
-        for lp in live_pos:
-          net_qty = int(lp.get("netqty", 0) or lp.get("buyqty", 0) or 0)
-          sym = lp.get("tradingsymbol", "")
-          if sym:
-            if not any(r["symbol"] == sym and r["accountId"] == acc.id for r in result):
-              avg_p = float(lp.get("avgprice", 0.0) or lp.get("buyavgprice", 0.0) or 0.0)
-              ltp = float(lp.get("ltp", 0.0) or avg_p)
-              pnl = float(lp.get("pnl", 0.0) or (ltp - avg_p) * net_qty)
-              
-              result.append({
-                "id": f"live-pos-{acc.id}-{sym}",
-                "accountId": acc.id,
-                "accountName": acc.name,
-                "symbol": sym,
-                "underlying": "BANKNIFTY" if "BANK" in sym else "FINNIFTY" if "FIN" in sym else "NIFTY",
-                "expiry": lp.get("expirydate", "Live"),
-                "strike": float(lp.get("strikeprice", 0.0) or 0.0),
-                "type": "CE" if "CE" in sym else "PE" if "PE" in sym else "EQ",
-                "quantity": net_qty,
-                "averagePrice": avg_p,
-                "ltp": ltp,
-                "unrealizedPnL": pnl,
-                "pnlPercent": round((pnl / (avg_p * abs(net_qty)) * 100), 2) if (avg_p and net_qty) else 0.0,
-                "realizedPnL": float(lp.get("realisedpnl", 0.0) or 0.0),
-                "algoId": "LIVE-SYNC",
-                "algoName": "Angel One Live Sync",
-                "status": "OPEN" if net_qty != 0 else "CLOSED",
-                "entryTime": "Live"
-              })
+    try:
+      if acc.encrypted_api_key:
+        api_key = vault.decrypt(acc.encrypted_api_key)
+        pin = vault.decrypt(acc.encrypted_pin) if acc.encrypted_pin else ""
+        totp_secret = vault.decrypt(acc.encrypted_totp_secret) if acc.encrypted_totp_secret else ""
+        
+        session = session_manager.get_or_create_session(acc.id, acc.client_id, api_key, pin, totp_secret)
+        if session.status == "CONNECTED":
+          live_pos = session.fetch_positions()
+          for lp in live_pos:
+            net_qty = int(lp.get("netqty", 0) or lp.get("buyqty", 0) or 0)
+            sym = lp.get("tradingsymbol", "")
+            if sym:
+              if not any(r["symbol"] == sym and r["accountId"] == acc.id for r in result):
+                avg_p = float(lp.get("avgprice", 0.0) or lp.get("buyavgprice", 0.0) or 0.0)
+                ltp = float(lp.get("ltp", 0.0) or avg_p)
+                pnl = float(lp.get("pnl", 0.0) or (ltp - avg_p) * net_qty)
+                
+                result.append({
+                  "id": f"live-pos-{acc.id}-{sym}",
+                  "accountId": acc.id,
+                  "accountName": acc.name,
+                  "symbol": sym,
+                  "underlying": "BANKNIFTY" if "BANK" in sym else "FINNIFTY" if "FIN" in sym else "NIFTY",
+                  "expiry": lp.get("expirydate", "Live"),
+                  "strike": float(lp.get("strikeprice", 0.0) or 0.0),
+                  "type": "CE" if "CE" in sym else "PE" if "PE" in sym else "EQ",
+                  "quantity": net_qty,
+                  "averagePrice": avg_p,
+                  "ltp": ltp,
+                  "unrealizedPnL": pnl,
+                  "pnlPercent": round((pnl / (avg_p * abs(net_qty)) * 100), 2) if (avg_p and net_qty) else 0.0,
+                  "realizedPnL": float(lp.get("realisedpnl", 0.0) or 0.0),
+                  "algoId": "LIVE-SYNC",
+                  "algoName": "Angel One Live Sync",
+                  "status": "OPEN" if net_qty != 0 else "CLOSED",
+                  "entryTime": "Live"
+                })
+    except Exception as e:
+      logger.warning(f"Failed syncing live positions for account {acc.name}: {e}")
 
   return result
 

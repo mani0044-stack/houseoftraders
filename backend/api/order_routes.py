@@ -54,17 +54,15 @@ def get_orders(db: Session = Depends(get_db)):
   # Optionally supplement with live orderBook from active Angel One sessions
   accounts = db.query(TradingAccountModel).filter(TradingAccountModel.is_enabled == True).all()
   for acc in accounts:
-    if acc.encrypted_api_key:
-      api_key = vault.decrypt(acc.encrypted_api_key)
-      pin = vault.decrypt(acc.encrypted_pin) if acc.encrypted_pin else ""
-      totp_secret = vault.decrypt(acc.encrypted_totp_secret) if acc.encrypted_totp_secret else ""
-      
-      session = session_manager.get_or_create_session(acc.id, acc.client_id, api_key, pin, totp_secret)
-      if session.status != "CONNECTED":
-        session.authenticate()
-
-      if session.status == "CONNECTED":
-        live_orders = session.fetch_orders()
+    try:
+      if acc.encrypted_api_key:
+        api_key = vault.decrypt(acc.encrypted_api_key)
+        pin = vault.decrypt(acc.encrypted_pin) if acc.encrypted_pin else ""
+        totp_secret = vault.decrypt(acc.encrypted_totp_secret) if acc.encrypted_totp_secret else ""
+        
+        session = session_manager.get_or_create_session(acc.id, acc.client_id, api_key, pin, totp_secret)
+        if session.status == "CONNECTED":
+          live_orders = session.fetch_orders()
         for lo in live_orders:
           b_id = str(lo.get("orderid") or lo.get("brokerorderid") or "")
           if b_id and not any(r["brokerOrderId"] == b_id for r in result):
@@ -87,6 +85,8 @@ def get_orders(db: Session = Depends(get_db)):
               "status": mapped_status,
               "timeline": {"placed": "Live SmartAPI Sync"}
             })
+    except Exception as e:
+      logger.warning(f"Failed syncing live orders: {e}")
 
   return result
 

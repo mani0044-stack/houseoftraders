@@ -166,6 +166,19 @@ def create_order(payload: CreateOrderPayload, db: Session = Depends(get_db)):
     )
     db.add(order_entry)
 
+    # Automatically create or update open position in database
+    sync_position_on_order(
+      db=db,
+      account_id=acc.id,
+      account_name=acc.name,
+      symbol=order_entry.symbol,
+      side=payload.side,
+      quantity=payload.quantity,
+      price=payload.price,
+      algo_id=payload.algoId or "MANUAL",
+      algo_name=payload.algoName or "Manual Execution"
+    )
+
     # Add audit log entry
     audit_entry = AuditLogModel(
       id=f"audit-{uuid.uuid4().hex[:8]}",
@@ -220,6 +233,57 @@ def cancel_order(order_id: str, db: Session = Depends(get_db)):
     session = session_manager.get_or_create_session(acc.id, acc.client_id, api_key, pin, totp_secret)
     session.cancel_order(order.broker_order_id)
 
+def sync_position_on_order(db: Session, account_id: str, account_name: str, symbol: str, side: str, quantity: int, price: float, algo_id: str = "MANUAL", algo_name: str = "Manual Execution"):
+    """Helper to update or create open position in database when an order executes."""
+    try:
+        underlying = "BANKNIFTY" if "BANK" in symbol else "FINNIFTY" if "FIN" in symbol else "SENSEX" if "SENSEX" in symbol else "NIFTY"
+        pos_type = "CE" if "CE" in symbol else "PE" if "PE" in symbol else "EQ"
+        timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        existing_pos = db.query(PositionModel).filter(
+            PositionModel.account_id == account_id,
+            PositionModel.symbol == symbol,
+            PositionModel.status == "OPEN"
+        ).first()
+
+        change_qty = quantity if side.upper() == "BUY" else -quantity
+
+        if existing_pos:
+            new_qty = existing_pos.quantity + change_qty
+            if new_qty == 0:
+                existing_pos.status = "CLOSED"
+                existing_pos.quantity = 0
+                existing_pos.realized_pnl = existing_pos.unrealized_pnl
+            else:
+                existing_pos.quantity = new_qty
+                if price > 0:
+                    existing_pos.average_price = round((existing_pos.average_price + price) / 2.0, 2)
+        else:
+            new_pos = PositionModel(
+                id=f"pos-{uuid.uuid4().hex[:8]}",
+                account_id=account_id,
+                account_name=account_name,
+                symbol=symbol,
+                underlying=underlying,
+                expiry="Live",
+                strike=0.0,
+                type=pos_type,
+                quantity=change_qty,
+                average_price=price if price > 0 else 100.0,
+                ltp=price if price > 0 else 100.0,
+                unrealized_pnl=0.0,
+                pnl_percent=0.0,
+                realized_pnl=0.0,
+                algo_id=algo_id,
+                algo_name=algo_name,
+                status="OPEN" if change_qty != 0 else "CLOSED",
+                entry_time=timestamp_str
+            )
+            db.add(new_pos)
+        db.commit()
+    except Exception as e:
+        logger.error(f"Failed syncing position for {symbol}: {e}")
+
 @router.post("/place_fo")
 def place_fo_order_route(payload: Dict[str, Any], db: Session = Depends(get_db)):
     """
@@ -228,13 +292,39 @@ def place_fo_order_route(payload: Dict[str, Any], db: Session = Depends(get_db))
     from backend.broker.fo_order_manager import place_fo_order, AngelScripMaster
     scrip_master = AngelScripMaster()
 
-    # Get active session
-    active_sessions = session_manager.get_all_active_sessions()
-    smart_api = active_sessions[0].smart_api if (active_sessions and active_sessions[0].smart_api) else None
+    target_acc_id = payload.get("accountId")
+    target_acc = None
+    if target_acc_id and target_acc_id != "ALL":
+        target_acc = db.query(TradingAccountModel).filter(TradingAccountModel.id == target_acc_id).first()
+    if not target_acc:
+        target_acc = db.query(TradingAccountModel).filter(TradingAccountModel.is_enabled == True).first()
 
-    # If no connected live session, mock execution for demonstration
+    smart_api = None
+    acc_id = "acc-demo"
+    acc_name = "Angel One Demo Session"
+
+    if target_acc and target_acc.encrypted_api_key:
+        api_key = vault.decrypt(target_acc.encrypted_api_key) if target_acc.encrypted_api_key else ""
+        pin = vault.decrypt(target_acc.encrypted_pin) if target_acc.encrypted_pin else ""
+        totp_secret = vault.decrypt(target_acc.encrypted_totp_secret) if target_acc.encrypted_totp_secret else ""
+        
+        session = session_manager.get_or_create_session(
+            account_id=target_acc.id,
+            client_id=target_acc.client_id,
+            api_key=api_key,
+            pin=pin,
+            totp_secret=totp_secret
+        )
+        if session.status != "CONNECTED":
+            session.authenticate()
+        
+        if session.status == "CONNECTED":
+            smart_api = session.smart_api
+            acc_id = target_acc.id
+            acc_name = target_acc.name
+
+    # If no connected live session, place order in DB demo/paper mode
     if not smart_api:
-        # Resolve scrip details from scrip master
         try:
             scrip_info = scrip_master.lookup_fo_instrument(
                 symbol=payload.get("symbol") or payload.get("underlying") or "NIFTY",
@@ -246,28 +336,40 @@ def place_fo_order_route(payload: Dict[str, Any], db: Session = Depends(get_db))
             lots = int(payload.get("lots") or 1)
             total_qty = lots * scrip_info["lotsize"]
             mock_order_id = f"ANGEL-{uuid.uuid4().hex[:8].upper()}"
+            exec_price = float(payload.get("price", 0.0) or 145.50)
+            trade_side = str(payload.get("transaction_type", "BUY")).upper()
 
-            # Log to DB
             timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             order_entry = OrderModel(
                 id=f"ord-{uuid.uuid4().hex[:8]}",
                 broker_order_id=mock_order_id,
                 timestamp=timestamp_str,
-                account_id="acc-demo",
-                account_name="Angel One Demo Session",
+                account_id=acc_id,
+                account_name=acc_name,
                 algo_id="FO-MANUAL",
                 algo_name="F&O Manual Execution",
                 symbol=scrip_info["tradingsymbol"],
-                side=str(payload.get("transaction_type", "BUY")).upper(),
+                side=trade_side,
                 quantity=total_qty,
                 order_type=str(payload.get("order_type", "MARKET")).upper(),
-                price=float(payload.get("price", 0.0) or 0.0),
-                average_price=float(payload.get("price", 0.0) or 0.0),
+                price=exec_price,
+                average_price=exec_price,
                 status="COMPLETED",
                 timeline={"placed": timestamp_str, "filled": timestamp_str}
             )
             db.add(order_entry)
             db.commit()
+
+            # Sync open position in database
+            sync_position_on_order(
+                db=db,
+                account_id=acc_id,
+                account_name=acc_name,
+                symbol=scrip_info["tradingsymbol"],
+                side=trade_side,
+                quantity=total_qty,
+                price=exec_price
+            )
 
             return {
                 "status": "SUCCESS",
@@ -286,6 +388,13 @@ def place_fo_order_route(payload: Dict[str, Any], db: Session = Depends(get_db))
 
     # Call production place_fo_order wrapper
     res = place_fo_order(payload, smart_api, scrip_master)
+    if res.get("status") == "SUCCESS":
+        tsym = payload.get("tradingsymbol") or payload.get("symbol", "NIFTY")
+        qty = int(payload.get("lots", 1)) * 50
+        side_val = str(payload.get("transaction_type", "BUY")).upper()
+        p_val = float(payload.get("price", 0.0) or 0.0)
+        sync_position_on_order(db, acc_id, acc_name, tsym, side_val, qty, p_val)
+
     return res
 
 

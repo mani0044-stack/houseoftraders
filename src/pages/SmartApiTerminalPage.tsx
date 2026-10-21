@@ -50,7 +50,17 @@ export const SmartApiTerminalPage: React.FC = () => {
 
   // Order Placement Execution Result
   const [orderLoading, setOrderLoading] = useState<boolean>(false);
-  const [orderResponse, setOrderResponse] = useState<{ status: string; order_id?: string; error?: string; message?: string } | null>(null);
+  const [orderResponse, setOrderResponse] = useState<{
+    status: string;
+    order_id?: string;
+    error?: string;
+    message?: string;
+    factor_badge?: string;
+    explanation?: string;
+    actionable_solution?: string;
+    factor?: string;
+    [key: string]: any;
+  } | null>(null);
 
   // Lot Size calculation
   const currentLotSize = resolvedScrip?.lotsize || (symbol === 'BANKNIFTY' ? 30 : symbol === 'FINNIFTY' ? 40 : symbol === 'NIFTY' ? 65 : 50);
@@ -550,12 +560,35 @@ export const SmartApiTerminalPage: React.FC = () => {
                     <p className="text-[11px] text-emerald-600">{orderResponse.message || 'Order placed with broker.'}</p>
                   </div>
                 ) : (
-                  <div className="bg-rose-50 border border-rose-200 p-4 rounded-xl space-y-2">
-                    <div className="flex items-center gap-2 text-rose-800 font-bold text-sm">
-                      <AlertCircle className="w-5 h-5 text-rose-600" />
-                      <span>ORDER EXECUTION REJECTED</span>
+                  <div className="bg-rose-50 border border-rose-200 p-4 rounded-xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-rose-800 font-bold text-sm">
+                        <AlertCircle className="w-5 h-5 text-rose-600" />
+                        <span>ORDER EXECUTION REJECTED</span>
+                      </div>
+                      {orderResponse.factor_badge && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-200 text-rose-900 border border-rose-300">
+                          {orderResponse.factor_badge}
+                        </span>
+                      )}
                     </div>
-                    <p className="text-xs text-rose-700 font-semibold font-mono">{orderResponse.error}</p>
+                    <p className="text-xs text-rose-800 font-semibold font-mono bg-white/80 p-2.5 rounded-lg border border-rose-200 break-words">
+                      {orderResponse.error || 'Broker rejected order'}
+                    </p>
+                    {orderResponse.explanation && (
+                      <p className="text-[11px] text-rose-900 leading-relaxed bg-rose-100/60 p-2.5 rounded-lg border border-rose-200/80">
+                        <strong>Diagnosis: </strong>{orderResponse.explanation}
+                      </p>
+                    )}
+                    {orderResponse.actionable_solution && (
+                      <div className="text-[11px] text-slate-700 bg-white p-3 rounded-lg border border-rose-300/80 whitespace-pre-line leading-relaxed shadow-xs">
+                        <div className="font-bold text-slate-900 mb-1 flex items-center gap-1.5">
+                          <Zap className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Actionable Resolution Steps:</span>
+                        </div>
+                        {orderResponse.actionable_solution}
+                      </div>
+                    )}
                   </div>
                 )
               ) : (

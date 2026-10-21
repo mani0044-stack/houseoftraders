@@ -14,6 +14,9 @@ import requests
 import pyotp
 from typing import Dict, Any, Optional, Tuple, Union
 
+import backend.broker.patch_smartapi  # Apply SmartConnect placeOrder and IP patches
+from backend.broker.rejection_analyzer import diagnose_rejection, pre_validate_order, calculate_order_slices
+
 logger = logging.getLogger(__name__)
 
 # Official Angel One OpenAPI Scrip Master Endpoint
@@ -399,13 +402,47 @@ def place_fo_order(
         if "STOPLOSS" in order_type:
             order_params["triggerprice"] = trigger_price_str
 
+        # 7.1 Pre-Trade Risk & Freeze Limit Validation
+        is_valid, warnings, pre_errors = pre_validate_order(ui_payload)
+        if not is_valid and pre_errors:
+            first_err = pre_errors[0]
+            diagnosed = diagnose_rejection(
+                {"message": first_err["message"], "errorCode": first_err["factor"]},
+                ui_payload
+            )
+            return {
+                "status": "FAILED",
+                "error": diagnosed["raw_message"],
+                "error_code": diagnosed["error_code"],
+                "factor": diagnosed["factor"],
+                "factor_title": diagnosed["factor_title"],
+                "factor_badge": diagnosed["factor_badge"],
+                "factor_color": diagnosed["factor_color"],
+                "factor_summary": diagnosed["factor_summary"],
+                "explanation": diagnosed["explanation"],
+                "actionable_solution": diagnosed["actionable_solution"],
+                "suggested_action": diagnosed["suggested_action"],
+                "additional_data": diagnosed.get("additional_data", {}),
+                "all_factors_evaluated": diagnosed["all_factors_evaluated"]
+            }
+
         logger.info(f"Submitting F&O order to Angel One: {order_params}")
 
         # 8. Execute Order via SmartConnect instance inside Try-Except block
         res = smart_connect_instance.placeOrder(order_params)
 
         # Inspect Angel One SmartAPI Response Payload
-        if isinstance(res, dict) and res.get("status") is True:
+        # Support both dictionary response (from patched SmartAPI) and string orderid
+        if isinstance(res, str) and res.strip():
+            order_id = res.strip()
+            return {
+                "status": "SUCCESS",
+                "order_id": order_id,
+                "message": "Order placed successfully",
+                "data": {"orderid": order_id}
+            }
+
+        if isinstance(res, dict) and (res.get("status") is True or res.get("success") is True):
             data = res.get("data") or {}
             order_id = data.get("orderid") or res.get("orderid") or data.get("script") or "SUCCESS"
             return {
@@ -415,25 +452,47 @@ def place_fo_order(
                 "data": data
             }
         else:
-            if isinstance(res, dict):
-                error_msg = res.get("message") or "Order execution rejected by broker."
-                error_code = res.get("errorcode") or "UNKNOWN"
-                error_str = f"{error_msg} (Error Code: {error_code})"
-            else:
-                error_str = str(res)
+            # Diagnose rejection against all 6 critical factors
+            diagnosed = diagnose_rejection(res, ui_payload)
+            logger.error(
+                f"Angel One Order Placement Rejected [{diagnosed['factor']} / {diagnosed['error_code']}]: "
+                f"{diagnosed['raw_message']}"
+            )
 
-            logger.error(f"Angel One Order Placement Failed: {error_str}")
             return {
                 "status": "FAILED",
-                "error": error_str
+                "error": diagnosed["raw_message"],
+                "error_code": diagnosed["error_code"],
+                "factor": diagnosed["factor"],
+                "factor_title": diagnosed["factor_title"],
+                "factor_badge": diagnosed["factor_badge"],
+                "factor_color": diagnosed["factor_color"],
+                "factor_summary": diagnosed["factor_summary"],
+                "explanation": diagnosed["explanation"],
+                "actionable_solution": diagnosed["actionable_solution"],
+                "suggested_action": diagnosed["suggested_action"],
+                "additional_data": diagnosed.get("additional_data", {}),
+                "all_factors_evaluated": diagnosed["all_factors_evaluated"]
             }
 
     except Exception as e:
         err_msg = str(e)
         logger.exception(f"Exception during F&O order placement: {err_msg}")
+        diagnosed = diagnose_rejection(err_msg, ui_payload)
         return {
             "status": "FAILED",
-            "error": f"Order Placement Exception: {err_msg}"
+            "error": diagnosed["raw_message"],
+            "error_code": diagnosed["error_code"],
+            "factor": diagnosed["factor"],
+            "factor_title": diagnosed["factor_title"],
+            "factor_badge": diagnosed["factor_badge"],
+            "factor_color": diagnosed["factor_color"],
+            "factor_summary": diagnosed["factor_summary"],
+            "explanation": diagnosed["explanation"],
+            "actionable_solution": diagnosed["actionable_solution"],
+            "suggested_action": diagnosed["suggested_action"],
+            "additional_data": diagnosed.get("additional_data", {}),
+            "all_factors_evaluated": diagnosed["all_factors_evaluated"]
         }
 
 

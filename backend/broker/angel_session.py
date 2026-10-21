@@ -216,19 +216,53 @@ class AccountSession:
       if resp and isinstance(resp, str):
         return {"success": True, "broker_order_id": resp, "mode": "LIVE", "symbol": trading_symbol, "exchange": exchange_name}
       elif isinstance(resp, dict):
-        if resp.get("status"):
+        if resp.get("status") or resp.get("success"):
           order_id = resp.get("data", {}).get("orderid") or resp.get("orderid") or f"ANGEL-{datetime.utcnow().strftime('%H%M%S')}"
           return {"success": True, "broker_order_id": order_id, "mode": "LIVE", "symbol": trading_symbol, "exchange": exchange_name}
         else:
-          err_msg = resp.get("message", "Rejected by Angel One API")
-          logger.error(f"Order placement rejected by Angel One for {self.client_id}: {err_msg}")
-          return {"success": False, "error": err_msg, "mode": "LIVE"}
+          # Check if session/token expired and auto-retry once
+          from backend.broker.rejection_analyzer import diagnose_rejection
+          diag = diagnose_rejection(resp)
+          if diag.get("suggested_action") == "REAUTHENTICATE_SESSION":
+            logger.info(f"Session token expired for {self.client_id}. Auto-reauthenticating via TOTP and retrying order...")
+            auth_ok, auth_msg = self.authenticate()
+            if auth_ok and self.smart_api:
+              retry_resp = self.smart_api.placeOrder(order_params)
+              if retry_resp and isinstance(retry_resp, str):
+                return {"success": True, "broker_order_id": retry_resp, "mode": "LIVE", "symbol": trading_symbol, "exchange": exchange_name}
+              elif isinstance(retry_resp, dict) and (retry_resp.get("status") or retry_resp.get("success")):
+                order_id = retry_resp.get("data", {}).get("orderid") or retry_resp.get("orderid") or f"ANGEL-{datetime.utcnow().strftime('%H%M%S')}"
+                return {"success": True, "broker_order_id": order_id, "mode": "LIVE", "symbol": trading_symbol, "exchange": exchange_name}
+              diag = diagnose_rejection(retry_resp)
+
+          err_msg = diag["raw_message"]
+          logger.error(f"Order placement rejected by Angel One for {self.client_id} [{diag['factor']}]: {err_msg}")
+          return {
+            "success": False,
+            "error": err_msg,
+            "diagnostic": diag,
+            "mode": "LIVE"
+          }
       else:
-        return {"success": False, "error": f"Unexpected broker response: {resp}", "mode": "LIVE"}
+        from backend.broker.rejection_analyzer import diagnose_rejection
+        diag = diagnose_rejection(resp)
+        return {
+          "success": False,
+          "error": diag["raw_message"],
+          "diagnostic": diag,
+          "mode": "LIVE"
+        }
     except Exception as e:
       err_str = str(e)
       logger.error(f"SmartAPI placeOrder exception for account {self.client_id}: {err_str}")
-      return {"success": False, "error": err_str, "mode": "LIVE"}
+      from backend.broker.rejection_analyzer import diagnose_rejection
+      diag = diagnose_rejection(err_str)
+      return {
+        "success": False,
+        "error": err_str,
+        "diagnostic": diag,
+        "mode": "LIVE"
+      }
 
   def cancel_order(self, order_id: str, variety: str = "NORMAL") -> Dict[str, Any]:
     """Cancel order on Angel One broker servers."""

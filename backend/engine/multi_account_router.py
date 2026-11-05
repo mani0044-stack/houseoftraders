@@ -6,8 +6,8 @@ from datetime import datetime
 from backend.config import settings
 from backend.database.session import SessionLocal
 from backend.database.models import OrderModel, AuditLogModel, TradingAccountModel
-from backend.engine.instrument_service import instrument_service
 from backend.broker.angel_session import session_manager
+from backend.broker.fo_order_manager import get_scrip_master, normalize_order_type
 from backend.engine.risk_engine import risk_engine
 from backend.engine.paper_engine import paper_engine
 
@@ -60,21 +60,69 @@ class MultiAccountOrderRouter:
 
         for leg in legs:
           action = str(leg.get("action", "BUY")).upper()
-          option_type = str(leg.get("optionType", "CE")).upper()
+          option_type = str(leg.get("optionType") or leg.get("option_type") or "CE").upper()
           strike = float(leg.get("strike", 0) or 0)
+
           base_lots = int(leg.get("lots", 1))
           final_lots = base_lots * multiplier
 
-          # Resolve lot size for underlying (NIFTY = 50, BANKNIFTY = 15, FINNIFTY = 40)
-          lot_size = 15 if underlying == "BANKNIFTY" else 40 if underlying == "FINNIFTY" else 50
+          from backend.engine.option_chain_service import option_chain_service
+          expiry_str = leg.get("expiry") or ""
+          if not expiry_str:
+            expiries = option_chain_service.get_available_expiries(underlying)
+            expiry_str = expiries[0] if expiries else ""
+          exchange = "BFO" if underlying in ("SENSEX", "BANKEX") else "NFO"
+
+          # If only a strike-selection label was given (ATM / OTM 1 / ITM 1), derive
+          # the actual strike from the spot price and the real contract strike step.
+          if strike <= 0:
+            step = option_chain_service._strike_step(underlying, expiry_str) if expiry_str else 50
+            atm = round(spot_price / step) * step
+            offset_map = {
+              "ATM": 0, "ITM 1": -1, "ITM 2": -2, "ITM 3": -3,
+              "OTM 1": 1, "OTM 2": 2, "OTM 3": 3,
+            }
+            selection = str(leg.get("strikeSelection") or "ATM").upper()
+            mult = offset_map.get(selection, 0)
+            if option_type == "PE":
+              mult = -mult
+            strike = atm + mult * step
+
+          # Resolve the EXACT contract and lot size from the Scrip Master.
+          try:
+            info = get_scrip_master().lookup_fo_instrument(
+              symbol=underlying,
+              expiry=expiry_str,
+              strike=None if option_type in ("FUT", "FUTURE", "FUTURES") else strike,
+              option_type=option_type,
+              exchange=exchange,
+            )
+          except Exception as resolve_err:
+            logger.error(
+              f"Could not resolve {underlying} {expiry_str} {strike} {option_type}: {resolve_err}"
+            )
+            order_status = "REJECTED"
+            execution_results.append({
+              "account_id": account_id,
+              "account_name": account_name,
+              "symbol": leg.get("symbol") or f"{underlying}{expiry_str}{strike}{option_type}",
+              "side": action,
+              "quantity": 0,
+              "lots": final_lots,
+              "status": order_status,
+              "error": str(resolve_err),
+              "mode": mode.upper(),
+            })
+            continue
+
+          trading_symbol = info["tradingsymbol"]
+          exchange = info["exchange"]
+          lot_size = int(info["lotsize"] or 1)
           quantity = final_lots * lot_size
 
-          # Construct trading symbol
-          expiry_str = leg.get("expiry") or "26SEP2024"
-          trading_symbol = leg.get("symbol") or f"{underlying}{expiry_str.replace(' ', '')}{int(strike) if strike > 0 else 24850}{option_type}"
-
-          inst = instrument_service.get_instrument(trading_symbol)
-          exchange = inst.get("exchange", "NFO") if inst else "NFO"
+          order_type = normalize_order_type(leg.get("orderType") or leg.get("order_type") or "MARKET")
+          order_price = float(leg.get("price", 0.0) or 0.0)
+          trigger_price = float(leg.get("triggerPrice") or leg.get("trigger_price") or 0.0)
 
           order_status = "COMPLETED"
           broker_order_id = f"ANGEL-MA-{uuid.uuid4().hex[:8].upper()}"
@@ -86,9 +134,13 @@ class MultiAccountOrderRouter:
                 symbol=trading_symbol,
                 side=action,
                 quantity=quantity,
-                price=0.0,
-                order_type="MARKET",
-                exchange=exchange
+                price=order_price,
+                order_type=order_type,
+                exchange=exchange,
+                trigger_price=trigger_price,
+                symboltoken=info["symboltoken"],
+                tradingsymbol=trading_symbol,
+                lotsize=lot_size,
               )
               if res and res.get("success"):
                 broker_order_id = res.get("broker_order_id", broker_order_id)
@@ -99,7 +151,7 @@ class MultiAccountOrderRouter:
               logger.error(f"Live SmartAPI order exception for account {account_id}: {ex}")
               order_status = "REJECTED"
           elif mode.upper() == "PAPER" or not session or session.status != "CONNECTED":
-            fill = paper_engine.simulate_fill(trading_symbol, action, quantity, spot_price)
+            fill = paper_engine.simulate_fill(trading_symbol, action, quantity, spot_price, lot_size=lot_size)
             broker_order_id = f"PAPER-{uuid.uuid4().hex[:8].upper()}"
             execution_type = "PAPER"
 
@@ -116,9 +168,9 @@ class MultiAccountOrderRouter:
             symbol=trading_symbol,
             side=action,
             quantity=quantity,
-            order_type="MARKET",
-            price=spot_price if spot_price > 0 else 142.50,
-            average_price=spot_price if spot_price > 0 else 142.50,
+            order_type=order_type,
+            price=order_price if order_price > 0 else 0.0,
+            average_price=order_price if order_price > 0 else 0.0,
             status=order_status,
             timeline={"created": "Just now", "transmitted_broker": "Just now"}
           )
@@ -132,6 +184,9 @@ class MultiAccountOrderRouter:
             "side": action,
             "quantity": quantity,
             "lots": final_lots,
+            "lotsize": lot_size,
+            "order_type": order_type,
+            "price": order_price,
             "status": order_status,
             "broker_order_id": broker_order_id,
             "mode": execution_type

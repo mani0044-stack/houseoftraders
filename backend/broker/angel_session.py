@@ -5,6 +5,17 @@ from datetime import datetime
 import backend.broker.patch_smartapi  # Apply SmartConnect read-only FS patch
 from SmartApi import SmartConnect
 from backend.engine.instrument_service import instrument_service
+from backend.broker.fo_order_manager import (
+  get_scrip_master,
+  parse_fo_symbol,
+  normalize_order_type,
+  build_price_fields,
+  safe_tick_size,
+  MARKET,
+  LIMIT,
+  STOPLOSS_LIMIT,
+  STOPLOSS_MARKET,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -172,11 +183,19 @@ class AccountSession:
     product_type: str = "CARRYFORWARD",
     duration: str = "DAY",
     exchange: Optional[str] = None,
-    variety: str = "NORMAL"
+    variety: str = "NORMAL",
+    trigger_price: float = 0.0,
+    symboltoken: Optional[str] = None,
+    tradingsymbol: Optional[str] = None,
+    lotsize: Optional[int] = None,
   ) -> Dict[str, Any]:
     """
     Place order directly with Angel One SmartAPI.
     Returns dictionary with success status, broker order ID, or explicit error details.
+
+    The exact contract (token + tradingsymbol + lot size + tick size) is resolved
+    from the Angel One Scrip Master. A fallback/dummy token is NEVER sent to the
+    broker, because that is what causes orders to land on the wrong strike.
     """
     if self.status != "CONNECTED":
       ok, auth_err = self.authenticate()
@@ -186,26 +205,98 @@ class AccountSession:
     if not self.smart_api:
       raise ValueError(f"SmartAPI client not initialized for account {self.client_id}")
 
-    # Look up token & exchange via InstrumentService
-    inst = instrument_service.get_instrument(symbol)
-    symbol_token = inst.get("token", "35001") if inst else "35001"
-    exchange_name = exchange or (inst.get("exchange") if inst else ("NFO" if "CE" in symbol or "PE" in symbol else "NSE"))
-    trading_symbol = inst.get("symbol", symbol) if inst else symbol
+    master = get_scrip_master()
+
+    # 1. Prefer an exact trading-symbol lookup (covers options, futures and equities)
+    info = master.lookup_by_symbol(tradingsymbol or symbol)
+    if not info and symboltoken:
+      info = master.lookup_by_token(symboltoken)
+
+    # 2. Parse an option/future trading symbol and resolve underlying/expiry/strike/type
+    if not info:
+      parsed = parse_fo_symbol(tradingsymbol or symbol)
+      if parsed:
+        try:
+          info = master.lookup_fo_instrument(
+            symbol=parsed["underlying"],
+            expiry=parsed["expiry"],
+            strike=parsed["strike"],
+            option_type=parsed["option_type"],
+            exchange=exchange or ("BFO" if parsed["underlying"] in ("SENSEX", "BANKEX") else "NFO"),
+            tradingsymbol=tradingsymbol,
+            symboltoken=symboltoken,
+          )
+        except Exception as resolve_err:
+          logger.error(f"Failed resolving F&O contract for {symbol}: {resolve_err}")
+          info = None
+
+    if not info:
+      # Non-derivative (cash) fallback - only accepted when the symbol matches exactly.
+      inst = instrument_service.get_instrument(symbol)
+      if inst and str(inst.get("symbol", "")).strip().upper() == str(symbol).strip().upper():
+        info = {
+          "symboltoken": str(inst.get("token")),
+          "tradingsymbol": str(inst.get("symbol")),
+          "lotsize": int(inst.get("lotsize", lotsize or quantity or 1) or 1),
+          "exchange": str(inst.get("exchange", exchange or "NSE")).upper(),
+          "tick_size": float(inst.get("tick_size", 0.05) or 0.05),
+        }
+
+    if not info:
+      raise ValueError(
+        f"Unable to resolve exact instrument for '{symbol}' in the Angel One Scrip Master. "
+        f"Refusing to place the order with a fallback token."
+      )
+
+    trading_symbol = info["tradingsymbol"]
+    symbol_token = info["symboltoken"]
+    exchange_name = (exchange or info.get("exchange") or "NFO").upper()
+    tick_size = safe_tick_size(info.get("tick_size", 0.05))
+    resolved_lot_size = int(info.get("lotsize", lotsize or 1) or 1)
+
+    # Quantity must be a valid multiple of the contract lot size
+    try:
+      quantity = int(quantity)
+    except (TypeError, ValueError):
+      raise ValueError(f"Invalid quantity: '{quantity}'")
+    if quantity <= 0:
+      raise ValueError("Quantity must be greater than zero.")
+    if resolved_lot_size > 0 and quantity % resolved_lot_size != 0:
+      raise ValueError(
+        f"Quantity {quantity} is not a multiple of the {trading_symbol} lot size ({resolved_lot_size})."
+      )
+
+    # 3. Normalize order type and build broker-compatible price fields
+    order_type = normalize_order_type(order_type)
+    if order_type not in (MARKET, LIMIT, STOPLOSS_LIMIT, STOPLOSS_MARKET):
+      raise ValueError(f"Unsupported order type: '{order_type}'")
+
+    price_str, trigger_str, price_err = build_price_fields(
+      order_type=order_type,
+      price=price,
+      trigger_price=trigger_price,
+      tick_size=tick_size,
+    )
+    if price_err:
+      raise ValueError(price_err)
 
     order_params = {
       "variety": variety.upper(),
       "tradingsymbol": trading_symbol,
       "symboltoken": str(symbol_token),
       "transactiontype": side.upper(),
-      "exchange": exchange_name.upper(),
-      "ordertype": order_type.upper(),
+      "exchange": exchange_name,
+      "ordertype": order_type,
       "producttype": product_type.upper(),
       "duration": duration.upper(),
-      "price": str(price) if order_type.upper() in ["LIMIT", "SL"] else "0",
+      "price": price_str,
       "squareoff": "0",
       "stoploss": "0",
       "quantity": str(quantity)
     }
+
+    if order_type in (STOPLOSS_LIMIT, STOPLOSS_MARKET):
+      order_params["triggerprice"] = trigger_str
 
     logger.info(f"Transmitting order to Angel One SmartAPI ({self.client_id}): {order_params}")
 

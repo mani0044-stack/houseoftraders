@@ -202,8 +202,8 @@ def lookup_scrip_endpoint(payload: Dict[str, Any]):
     """
     Looks up F&O symboltoken, tradingsymbol, and lot size from Scrip Master.
     """
-    from backend.broker.fo_order_manager import AngelScripMaster
-    scrip_master = AngelScripMaster()
+    from backend.broker.fo_order_manager import get_scrip_master
+    scrip_master = get_scrip_master()
     try:
         res = scrip_master.lookup_fo_instrument(
             symbol=payload.get("symbol", ""),

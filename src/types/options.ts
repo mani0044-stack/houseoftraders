@@ -9,7 +9,9 @@ export interface OptionGreeks {
 }
 
 export interface OptionContract {
-  symbol: string; // e.g. "NIFTY24SEP24800CE"
+  symbol: string; // e.g. "NIFTY09NOV2620050CE"
+  token?: string; // Angel One symboltoken
+  lotsize?: number; // Contract lot size from Scrip Master
   underlying: UnderlyingSymbol;
   strike: number;
   expiry: string;

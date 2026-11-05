@@ -232,7 +232,7 @@ def trigger_algo_execution(strategy_id: str, db: Session = Depends(get_db)):
 
   if order_info:
     algo.trades_today += 1
-    algo.current_exposure += 142.50 * 50
+    algo.current_exposure += float(order_info.get("price") or 0) * int(order_info.get("quantity") or 0)
     db.commit()
     return {"success": True, "message": "Algo Signal Executed", "order": order_info}
   else:
@@ -252,27 +252,35 @@ def execute_multi_account(strategy_id: str, db: Session = Depends(get_db)):
   if not algo:
     raise HTTPException(status_code=404, detail="Strategy not found")
 
-  from backend.engine.strategy_framework import Signal
   from backend.engine.multi_account_router import multi_account_router
 
-  sig = Signal(
-    strategy_id=algo.id,
-    underlying=algo.underlying,
-    direction="BULLISH",
-    action="BUY",
-    strike_selection=algo.strike_selection,
-    option_type="CE" if algo.option_type == "Auto" else algo.option_type,
-    expiry_selection=algo.expiry_type
-  )
+  # Build the concrete strategy legs. Created algos persist a `legs` array; older
+  # algos only have a single strikeSelection/optionType, which we map to one leg.
+  legs = algo.legs if isinstance(algo.legs, list) and algo.legs else [{
+    "action": "BUY",
+    "optionType": "CE" if algo.option_type in (None, "Auto") else algo.option_type,
+    "strikeSelection": algo.strike_selection or "ATM",
+    "lots": 1,
+  }]
 
   allocations = algo.account_allocations or []
   if not allocations:
+    from backend.database.models import TradingAccountModel
+    enabled_accounts = db.query(TradingAccountModel).filter(TradingAccountModel.is_enabled == True).all()
     allocations = [
-      {"accountId": "acc-main-01", "enabled": True, "lotsMultiplier": 1},
-      {"accountId": "acc-sub-02", "enabled": True, "lotsMultiplier": 2}
+      {"accountId": acc.id, "accountName": acc.name, "enabled": True, "lotsMultiplier": 1}
+      for acc in enabled_accounts
     ]
 
-  results = multi_account_router.execute_multi_account_strategy(sig, allocations, spot_price=24865.40)
+  results = multi_account_router.execute_multi_account_strategy(
+    strategy_id=algo.id,
+    strategy_name=algo.name,
+    underlying=algo.underlying or "NIFTY",
+    legs=legs,
+    allocations=allocations,
+    mode=algo.mode or "Paper",
+    spot_price=24865.40,
+  )
   return {"success": True, "strategy_id": strategy_id, "account_executions": results}
 
 

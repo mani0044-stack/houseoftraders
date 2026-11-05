@@ -17,39 +17,57 @@ export const OptionContractDrawer: React.FC = () => {
 
   const handleOrderSubmit = async (side: 'BUY' | 'SELL') => {
     try {
-      const res = await ordersApi.createOrder({
-        symbol: selectedContract.symbol,
-        side,
-        quantity: 50,
-        orderType: 'MARKET',
-        price: selectedContract.ltp,
+      // Place through the F&O route so the exact strike/token/lot size are
+      // resolved from the contract (strike + expiry + option type), not a
+      // hardcoded quantity or a possibly stale trading symbol.
+      const res = await ordersApi.placeFoOrder({
+        symbol: selectedContract.underlying,
+        expiry: selectedContract.expiry,
+        strike: selectedContract.strike,
+        option_type: selectedContract.type,
+        exchange: selectedContract.underlying === 'SENSEX' ? 'BFO' : 'NFO',
+        transaction_type: side,
+        order_type: 'MARKET',
+        product_type: 'INTRADAY',
+        lots: 1,
+        price: 0,
+        tradingsymbol: selectedContract.symbol,
+        symboltoken: selectedContract.token,
         algoId: 'MANUAL-01',
         algoName: 'Manual Option Chain Execution'
       });
 
+      if (res?.status !== 'SUCCESS') {
+        addToast('Order Rejected', res?.error || res?.message || 'Broker rejected the order.', 'error');
+        return;
+      }
+
+      const executedQty = res?.data?.quantity || selectedContract.lotsize || '';
+      const executedSymbol = res?.data?.tradingsymbol || selectedContract.symbol;
+      const brokerOrderId = res?.order_id || res?.data?.orderid;
+
       addToast(
-        `Broker Order Executed (${res.mode || 'LIVE'})`,
-        `${side} 50 ${selectedContract.symbol} @ ₹${res.price || selectedContract.ltp}. Broker ID: ${res.brokerOrderId}`,
+        'Broker Order Executed',
+        `${side} ${executedQty} ${executedSymbol} @ ₹${res?.data?.price || selectedContract.ltp}. Broker ID: ${brokerOrderId}`,
         'success'
       );
 
       addActivityLog(
         'Broker Order Executed',
-        `${side} ${selectedContract.symbol} via ${res.mode || 'LIVE'} broker engine. ID: ${res.brokerOrderId}`,
+        `${side} ${executedSymbol} via LIVE broker engine. ID: ${brokerOrderId}`,
         'Order',
         'SUCCESS'
       );
 
       refreshPositions();
       refreshOrders();
+      setSelectedContract(null);
     } catch (err: any) {
       addToast(
         'Order Execution Error',
-        err?.response?.data?.detail || 'Failed to submit order to broker',
+        err?.response?.data?.detail || err?.message || 'Failed to submit order to broker',
         'error'
       );
-    } finally {
-      setSelectedContract(null);
     }
   };
 

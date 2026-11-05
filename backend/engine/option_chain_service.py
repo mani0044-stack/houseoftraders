@@ -88,55 +88,158 @@ class OptionChainService:
   """
   def __init__(self):
     self.live_matrix: Dict[str, Any] = {}
+    self._instrument_index: Optional[Dict[tuple, list]] = None
+
+  def _get_instrument_index(self) -> Dict[tuple, list]:
+    """Lazily index option contracts by (underlying, expiry, exchange)."""
+    if self._instrument_index is not None:
+      return self._instrument_index
+
+    index: Dict[tuple, list] = {}
+    for item in instrument_service.all_instruments:
+      exch = item.get("exch_seg", "").strip().upper()
+      if exch not in ("NFO", "BFO"):
+        continue
+      if "OPT" not in item.get("instrumenttype", "").upper():
+        continue
+      key = (
+        item.get("name", "").strip().upper(),
+        self._normalise_expiry(item.get("expiry", "")),
+        exch,
+      )
+      index.setdefault(key, []).append(item)
+    self._instrument_index = index
+    return index
 
   def get_available_expiries(self, underlying: str = "NIFTY") -> List[str]:
     """
     Extract sorted list of unique expiry dates for NFO option contracts from Angel One Scrip Master.
     """
-    all_insts = instrument_service.all_instruments
     underlying_clean = underlying.strip().upper()
+    target_exchange = self._exchange_for(underlying_clean)
 
-    expiries = set()
-    for item in all_insts:
-      name = item.get("name", "").strip().upper()
-      exch = item.get("exch_seg", "").strip()
-      expiry = item.get("expiry", "").strip()
-      inst_type = item.get("instrumenttype", "").strip()
+    expiries = {
+      expiry
+      for (name, expiry, exch) in self._get_instrument_index()
+      if name == underlying_clean and exch == target_exchange and expiry
+    }
 
-      if exch == "NFO" and name == underlying_clean and expiry and "OPT" in inst_type:
-        expiries.add(expiry)
-
-    # Fallback default expiries if Scrip Master is downloading
+    # Never fabricate expiries. If the Scrip Master has not loaded, return an
+    # empty list so callers fail loudly instead of trading an expired contract.
     if not expiries:
-      return ["26 SEP 2024", "03 OCT 2024", "31 OCT 2024"]
+      logger.warning("No option expiries found for %s in Scrip Master", underlying_clean)
+      return []
 
     def parse_exp(exp_str):
       try:
-        return datetime.strptime(exp_str, "%d%b%Y")
+        return datetime.strptime(self._normalise_expiry(exp_str), "%d%b%Y")
       except Exception:
-        try:
-          return datetime.strptime(exp_str, "%d %b %Y")
-        except Exception:
-          return datetime.max
+        return datetime.min
 
-    sorted_exp = sorted(list(expiries), key=parse_exp)
-    return sorted_exp[:10]
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    future_expiries = [e for e in expiries if parse_exp(e) >= today]
+    ordered = sorted(future_expiries, key=parse_exp)
+    return ordered[:10]
+
+  def _exchange_for(self, underlying: str) -> str:
+    return "BFO" if underlying.strip().upper() in ("SENSEX", "BANKEX") else "NFO"
+
+  def _fallback_lot_size(self, underlying: str) -> int:
+    """Display-only fallback when a strike has no matching contract in the cache."""
+    return {
+      "NIFTY": 65,
+      "BANKNIFTY": 30,
+      "FINNIFTY": 60,
+      "MIDCPNIFTY": 120,
+      "SENSEX": 20,
+      "BANKEX": 30,
+    }.get(underlying.strip().upper(), 1)
+
+  def _default_strike_step(self, underlying: str) -> float:
+    return {
+      "BANKNIFTY": 100,
+      "SENSEX": 100,
+      "BANKEX": 100,
+      "FINNIFTY": 50,
+      "MIDCPNIFTY": 25,
+      "NIFTY": 50,
+    }.get(underlying.strip().upper(), 50)
+
+  def _strike_step(self, underlying: str, expiry: str) -> float:
+    """Derive the real strike interval from the contracts in this expiry."""
+    u_clean = underlying.strip().upper()
+    exp_clean = self._normalise_expiry(expiry)
+    candidates = self._get_instrument_index().get(
+      (u_clean, exp_clean, self._exchange_for(u_clean)), []
+    )
+
+    strikes = set()
+    for item in candidates:
+      try:
+        raw = float(item.get("strike", "0") or "0")
+      except (TypeError, ValueError):
+        continue
+      # Scrip Master stores option strikes x100.
+      if raw > 0:
+        strikes.add(round(raw / 100.0, 4))
+
+    ordered = sorted(strikes)
+    gaps = [round(b - a, 4) for a, b in zip(ordered, ordered[1:]) if b > a]
+    if not gaps:
+      return float(self._default_strike_step(u_clean))
+
+    # Smallest gap is the base strike interval; ignore odd far-OTM spacing.
+    step = min(gaps)
+    return step if step > 0 else float(self._default_strike_step(u_clean))
+
+  @staticmethod
+  def _normalise_expiry(expiry: str) -> str:
+    """Return DDMMMYYYY (e.g. 09NOV2026) for the many display formats used by the UI."""
+    if not expiry:
+      return ""
+    exp = str(expiry).strip().upper().replace(" ", "")
+    for fmt in ("%d%b%Y", "%d%b%y", "%Y-%m-%d", "%d-%b-%Y", "%d-%m-%Y"):
+      try:
+        return datetime.strptime(exp, fmt).strftime("%d%b%Y").upper()
+      except ValueError:
+        continue
+    return exp
 
   def find_option_instrument(self, underlying: str, expiry: str, strike: float, option_type: str) -> Optional[Dict[str, Any]]:
-    """Look up exact Angel One Scrip Master NFO instrument token."""
-    all_insts = instrument_service.all_instruments
+    """
+    Look up the exact Angel One Scrip Master option contract.
+
+    Angel One stores option strikes multiplied by 100 (e.g. 2485000.0 for 24850),
+    so the comparison must account for that. The expiry must also match, otherwise
+    the same strike from a different expiry would be returned.
+    """
     u_clean = underlying.strip().upper()
     opt_clean = option_type.strip().upper()
+    exp_clean = self._normalise_expiry(expiry)
+    target_exchange = self._exchange_for(u_clean)
 
-    for item in all_insts:
-      if item.get("exch_seg") == "NFO" and item.get("name", "").strip().upper() == u_clean:
-        try:
-          stk = float(item.get("strike", "0") or "0")
-          sym = item.get("symbol", "").strip().upper()
-          if abs(stk - strike) < 0.1 and sym.endswith(opt_clean):
-            return item
-        except Exception:
-          continue
+    try:
+      target_strike = float(strike)
+    except (TypeError, ValueError):
+      return None
+
+    candidates = self._get_instrument_index().get((u_clean, exp_clean, target_exchange), [])
+
+    for item in candidates:
+      sym = item.get("symbol", "").strip().upper()
+      if not sym.endswith(opt_clean):
+        continue
+
+      try:
+        stk = float(item.get("strike", "0") or "0")
+      except (TypeError, ValueError):
+        continue
+
+      # Scrip Master stores option strikes x100 (2485000 for 24850)
+      if abs(stk - target_strike) > 0.01 and abs((stk / 100.0) - target_strike) > 0.01:
+        continue
+
+      return item
     return None
 
   def get_option_chain_matrix(
@@ -151,13 +254,17 @@ class OptionChainService:
     Queries live Angel One SmartAPI quotes for active broker sessions and calculates Black-Scholes IV & Greeks.
     """
     underlying = underlying.strip().upper()
-    step = 100 if underlying == "BANKNIFTY" else 50
     if not spot_price or spot_price <= 0:
       spot_price = 53210.80 if underlying == "BANKNIFTY" else 23640.25 if underlying == "FINNIFTY" else 24865.40
 
-    atm_strike = round(spot_price / step) * step
     expiries = self.get_available_expiries(underlying)
-    selected_expiry = expiry or (expiries[0] if expiries else "26 SEP 2024")
+    selected_expiry = expiry or (expiries[0] if expiries else "")
+    if not selected_expiry:
+      logger.warning("Cannot build option chain for %s: no valid expiry", underlying)
+      return []
+
+    step = self._strike_step(underlying, selected_expiry)
+    atm_strike = round(spot_price / step) * step
 
     # Check for active Angel One SmartAPI session
     active_sessions = session_manager.get_all_active_sessions()
@@ -166,8 +273,8 @@ class OptionChainService:
     # Calculate days to expiry
     days_to_exp = 7.0
     try:
-      exp_date = datetime.strptime(selected_expiry, "%d%b%Y" if len(selected_expiry.split()) == 1 else "%d %b %Y")
-      days_to_exp = max(0.1, (exp_date - datetime.now()).days + 0.5)
+      exp_date = datetime.strptime(self._normalise_expiry(selected_expiry), "%d%b%Y")
+      days_to_exp = max(0.1, (exp_date - datetime.now()).total_seconds() / 86400.0)
     except Exception:
       days_to_exp = 5.0
 
@@ -180,10 +287,18 @@ class OptionChainService:
       ce_inst = self.find_option_instrument(underlying, selected_expiry, strike, "CE")
       pe_inst = self.find_option_instrument(underlying, selected_expiry, strike, "PE")
 
-      ce_symbol = ce_inst.get("symbol") if ce_inst else f"{underlying}{selected_expiry.replace(' ', '')}{strike}CE"
-      ce_token = ce_inst.get("token") if ce_inst else f"CE-{strike}"
+      norm_expiry = self._normalise_expiry(selected_expiry)
+      try:
+        exp_dt = datetime.strptime(norm_expiry, "%d%b%Y")
+        sym_expiry = exp_dt.strftime("%d%b%y").upper()
+      except Exception:
+        sym_expiry = norm_expiry
 
-      pe_symbol = pe_inst.get("symbol") if pe_inst else f"{underlying}{selected_expiry.replace(' ', '')}{strike}PE"
+      ce_symbol = ce_inst.get("symbol") if ce_inst else f"{underlying}{sym_expiry}{int(strike)}CE"
+      ce_token = ce_inst.get("token") if ce_inst else f"CE-{strike}"
+      lot_size = int(ce_inst.get("lotsize", 0) or pe_inst.get("lotsize", 0) or 0) if (ce_inst or pe_inst) else 0
+
+      pe_symbol = pe_inst.get("symbol") if pe_inst else f"{underlying}{sym_expiry}{int(strike)}PE"
       pe_token = pe_inst.get("token") if pe_inst else f"PE-{strike}"
 
       # Fetch Live LTP via SmartAPI if session is active
@@ -198,9 +313,11 @@ class OptionChainService:
       if sb_ce_ltp: ce_ltp = float(sb_ce_ltp)
       if sb_pe_ltp: pe_ltp = float(sb_pe_ltp)
 
+      target_exchange = self._exchange_for(underlying)
+
       if smart_api and ce_token and not ce_token.startswith("CE-"):
         try:
-          q = smart_api.getLtpData("NFO", ce_symbol, ce_token)
+          q = smart_api.getLtpData(target_exchange, ce_symbol, ce_token)
           if q and q.get("status") and q.get("data"):
             ce_ltp = float(q.get("data", {}).get("ltp", ce_ltp))
         except Exception:
@@ -208,7 +325,7 @@ class OptionChainService:
 
       if smart_api and pe_token and not pe_token.startswith("PE-"):
         try:
-          q = smart_api.getLtpData("NFO", pe_symbol, pe_token)
+          q = smart_api.getLtpData(target_exchange, pe_symbol, pe_token)
           if q and q.get("status") and q.get("data"):
             pe_ltp = float(q.get("data", {}).get("ltp", pe_ltp))
         except Exception:
@@ -226,6 +343,7 @@ class OptionChainService:
           "underlying": underlying,
           "strike": strike,
           "expiry": selected_expiry,
+          "lotsize": lot_size or self._fallback_lot_size(underlying),
           "type": "CE",
           "ltp": ce_ltp,
           "change": round(ce_ltp * 0.025, 2),
@@ -246,6 +364,7 @@ class OptionChainService:
           "underlying": underlying,
           "strike": strike,
           "expiry": selected_expiry,
+          "lotsize": lot_size or self._fallback_lot_size(underlying),
           "type": "PE",
           "ltp": pe_ltp,
           "change": round(-pe_ltp * 0.018, 2),

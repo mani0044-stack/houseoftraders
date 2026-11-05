@@ -12,41 +12,80 @@ logger = logging.getLogger(__name__)
 EXCHANGE_FREEZE_LIMITS = {
     "NIFTY": {
         "freeze_qty": 1800,
-        "default_lot": 25,
-        "max_lots_per_order": 72,
+        "default_lot": 65,
+        "max_lots_per_order": 27,
         "exchange": "NFO"
     },
     "BANKNIFTY": {
         "freeze_qty": 900,
-        "default_lot": 15,
-        "max_lots_per_order": 60,
+        "default_lot": 30,
+        "max_lots_per_order": 30,
         "exchange": "NFO"
     },
     "FINNIFTY": {
         "freeze_qty": 1800,
-        "default_lot": 25,
-        "max_lots_per_order": 72,
+        "default_lot": 60,
+        "max_lots_per_order": 30,
         "exchange": "NFO"
     },
     "MIDCPNIFTY": {
         "freeze_qty": 4200,
-        "default_lot": 50,
-        "max_lots_per_order": 84,
+        "default_lot": 120,
+        "max_lots_per_order": 35,
         "exchange": "NFO"
     },
     "SENSEX": {
         "freeze_qty": 1000,
-        "default_lot": 10,
-        "max_lots_per_order": 100,
+        "default_lot": 20,
+        "max_lots_per_order": 50,
         "exchange": "BFO"
     },
     "BANKEX": {
         "freeze_qty": 900,
-        "default_lot": 15,
-        "max_lots_per_order": 60,
+        "default_lot": 30,
+        "max_lots_per_order": 30,
         "exchange": "BFO"
     }
 }
+
+
+def _resolve_lot_size(payload: Dict[str, Any], fallback: int) -> int:
+    """
+    Resolve the real contract lot size from the Scrip Master.
+
+    The static EXCHANGE_FREEZE_LIMITS table is only a fallback: exchange lot sizes
+    change over time, and using a stale value makes pre-trade quantity checks wrong.
+    """
+    try:
+        from backend.broker.fo_order_manager import get_scrip_master
+        scrip_master = get_scrip_master()
+    except Exception:
+        return int(payload.get("lotsize") or fallback)
+
+    def fo_lot(info: Optional[Dict[str, Any]]) -> Optional[int]:
+        if not info or not info.get("lotsize"):
+            return None
+        # Only derivative rows carry the contract lot size; an index/equity row
+        # (e.g. "NIFTY") has lotsize 1 and must not override the F&O default.
+        if str(info.get("exchange", "")).upper() not in ("NFO", "BFO"):
+            return None
+        return int(info["lotsize"])
+
+    for key in ("symboltoken", "symbol_token", "token"):
+        token = payload.get(key)
+        if token:
+            lot = fo_lot(scrip_master.lookup_by_token(str(token)))
+            if lot:
+                return lot
+
+    for key in ("tradingsymbol", "trading_symbol", "symbol"):
+        tsym = payload.get(key)
+        if tsym:
+            lot = fo_lot(scrip_master.lookup_by_symbol(str(tsym)))
+            if lot:
+                return lot
+
+    return int(payload.get("lotsize") or fallback)
 
 
 class RejectionFactor(str, Enum):
@@ -251,7 +290,8 @@ def diagnose_rejection(
         sym_key = next((k for k in EXCHANGE_FREEZE_LIMITS if k in symbol), "NIFTY")
         limit_info = EXCHANGE_FREEZE_LIMITS.get(sym_key, {"freeze_qty": 1800, "default_lot": 25})
 
-        qty = int(ui_payload.get("quantity") or (int(ui_payload.get("lots", 1)) * limit_info["default_lot"]))
+        lot_size = _resolve_lot_size(ui_payload, limit_info["default_lot"])
+        qty = int(ui_payload.get("quantity") or (int(ui_payload.get("lots", 1)) * lot_size))
         slices = (qty + limit_info["freeze_qty"] - 1) // limit_info["freeze_qty"]
 
         explanation = (
@@ -466,10 +506,11 @@ def pre_validate_order(
     sym_key = next((k for k in EXCHANGE_FREEZE_LIMITS if k in symbol), "NIFTY")
     limit_info = EXCHANGE_FREEZE_LIMITS.get(sym_key, {"freeze_qty": 1800, "default_lot": 25})
 
+    lot_size = _resolve_lot_size(payload, limit_info["default_lot"])
     lots = int(payload.get("lots") or payload.get("quantity_lots") or 1)
     total_qty = payload.get("quantity")
     if not total_qty:
-        total_qty = lots * limit_info["default_lot"]
+        total_qty = lots * lot_size
     total_qty = int(total_qty)
 
     # 1. Freeze Limit Pre-Check
@@ -484,7 +525,17 @@ def pre_validate_order(
         })
 
     # 2. Price Band & LPP Pre-Check
-    order_type = str(payload.get("order_type", "MARKET")).upper()
+    order_type = str(payload.get("order_type", "MARKET")).strip().upper().replace(" ", "_")
+    order_type = {
+        "SL": "STOPLOSS_LIMIT",
+        "SL-L": "STOPLOSS_LIMIT",
+        "SL_LIMIT": "STOPLOSS_LIMIT",
+        "SL-M": "STOPLOSS_MARKET",
+        "SLM": "STOPLOSS_MARKET",
+        "SL_M": "STOPLOSS_MARKET",
+        "MKT": "MARKET",
+    }.get(order_type, order_type)
+
     option_type = str(payload.get("option_type", "")).upper()
     if order_type == "MARKET" and option_type in ["CE", "PE"]:
         warnings.append(
@@ -492,11 +543,19 @@ def pre_validate_order(
         )
 
     price = float(payload.get("price", 0.0) or 0.0)
-    if order_type in ["LIMIT", "SL"] and price <= 0:
+    if order_type in ["LIMIT", "STOPLOSS_LIMIT"] and price <= 0:
         errors.append({
             "factor": RejectionFactor.PRICE_BAND_LPP.value,
-            "message": "Limit price must be greater than zero for LIMIT orders."
+            "message": f"Limit price must be greater than zero for {order_type} orders."
         })
+
+    if order_type in ["STOPLOSS_LIMIT", "STOPLOSS_MARKET"]:
+        trigger = float(payload.get("trigger_price") or payload.get("triggerprice") or 0.0)
+        if trigger <= 0:
+            errors.append({
+                "factor": RejectionFactor.PRICE_BAND_LPP.value,
+                "message": f"Trigger price must be greater than zero for {order_type} orders."
+            })
 
     # 3. Margin Pre-Check
     avail_margin = float(account_rms.get("available_margin", 0.0) or 0.0)
@@ -518,13 +577,16 @@ def pre_validate_order(
 
 def calculate_order_slices(
     symbol: str,
-    total_quantity: int
+    total_quantity: int,
+    lot_size: Optional[int] = None
 ) -> List[Dict[str, Any]]:
     """Calculates order batches to stay under exchange freeze limits."""
     sym_key = next((k for k in EXCHANGE_FREEZE_LIMITS if k in symbol.upper()), "NIFTY")
     limit = EXCHANGE_FREEZE_LIMITS.get(sym_key, {"freeze_qty": 1800, "default_lot": 25})
     freeze_qty = limit["freeze_qty"]
-    lot_size = limit["default_lot"]
+    lot_size = int(lot_size or limit["default_lot"])
+    if lot_size <= 0:
+        lot_size = 1
 
     slices = []
     remaining = total_quantity

@@ -122,12 +122,31 @@ export const ManualOrderModal: React.FC = () => {
     setStrike((prev) => Math.max(10, prev + direction * currentStep));
   };
 
+  // Always use a live, non-expired expiry from the Scrip Master instead of a
+  // hardcoded date (a stale expiry is the most common contract-resolution failure).
+  useEffect(() => {
+    if (!isManualOrderOpen) return;
+    let isMounted = true;
+    fetch(`/api/v1/options/expiries?underlying=${encodeURIComponent(symbol)}`)
+      .then((resp) => resp.json())
+      .then((dates: string[]) => {
+        if (isMounted && Array.isArray(dates) && dates.length > 0) {
+          setExpiry(dates[0]);
+        }
+      })
+      .catch(() => {});
+    return () => { isMounted = false; };
+  }, [isManualOrderOpen, symbol]);
+
   // Auto-resolve Scrip Token & Tradingsymbol whenever parameters change
   useEffect(() => {
     let isMounted = true;
     if (!isManualOrderOpen) return;
 
     const resolveScripToken = async () => {
+      // Never keep a token/symbol from a previous strike/expiry while resolving
+      // the new one - that is what routed orders to the wrong strike.
+      setResolvedScrip(null);
       setScripLoading(true);
       try {
         const resp = await fetch('/api/v1/market/lookup_scrip', {
@@ -145,17 +164,9 @@ export const ManualOrderModal: React.FC = () => {
         if (isMounted && data.status === 'SUCCESS' && data.data) {
           setResolvedScrip(data.data);
         }
-      } catch (err) {
-        if (isMounted) {
-          const formattedTradingSymbol = optionType === 'FUT'
-            ? `${symbol}27OCT26FUT`
-            : `${symbol}13OCT26${strike}${optionType}`;
-          setResolvedScrip({
-            symboltoken: '44442',
-            tradingsymbol: formattedTradingSymbol,
-            lotsize: currentLotSize
-          });
-        }
+      } catch {
+        // Backend will re-resolve the exact contract from strike/expiry/option type.
+        if (isMounted) setResolvedScrip(null);
       } finally {
         if (isMounted) setScripLoading(false);
       }
@@ -603,10 +614,12 @@ export const ManualOrderModal: React.FC = () => {
               <Database className="w-4 h-4 text-blue-600" />
               <div>
                 <div className="text-xs font-extrabold text-blue-950 font-mono">
-                  {scripLoading ? 'Resolving SmartAPI Scrip Master Token...' : resolvedScrip?.tradingsymbol || `${symbol}13OCT26${strike}${optionType}`}
+                  {scripLoading
+                    ? 'Resolving SmartAPI Scrip Master Token...'
+                    : resolvedScrip?.tradingsymbol || 'Contract not resolved - check expiry/strike'}
                 </div>
                 <div className="text-[10px] text-blue-700 font-medium">
-                  Symbol Token: <span className="font-bold font-mono text-blue-900">{resolvedScrip?.symboltoken || '44442'}</span> | Exchange: {exchange} | Lot Size: {currentLotSize}
+                  Symbol Token: <span className="font-bold font-mono text-blue-900">{resolvedScrip?.symboltoken || 'resolve on submit'}</span> | Exchange: {exchange} | Lot Size: {currentLotSize}
                 </div>
               </div>
             </div>

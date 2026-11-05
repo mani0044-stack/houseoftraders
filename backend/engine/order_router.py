@@ -52,8 +52,16 @@ class OrderRouter:
       spot_price=spot_price
     )
 
-    quantity = (opt["lot_size"] if opt else 50) * risk_result.lots
-    trading_symbol = opt["trading_symbol"] if opt else f"{signal.underlying}24SEP24850CE"
+    if not opt:
+      logger.error(
+        "Cannot route %s %s: no exact Scrip Master contract resolved for %s / %s / %s",
+        signal.action, signal.underlying, signal.expiry_selection,
+        signal.strike_selection, signal.option_type,
+      )
+      return None
+
+    quantity = int(opt["lot_size"]) * risk_result.lots
+    trading_symbol = opt["trading_symbol"]
     market_price = 142.50 # Market price simulation
 
     session = session_manager.get_session(risk_result.account_id)
@@ -63,7 +71,11 @@ class OrderRouter:
         side=signal.action,
         quantity=quantity,
         price=market_price,
-        order_type="MARKET"
+        order_type="MARKET",
+        exchange=opt.get("exchange"),
+        symboltoken=opt.get("symbol_token"),
+        tradingsymbol=trading_symbol,
+        lotsize=int(opt["lot_size"]),
       )
       return {
         "idempotency_key": idempotency_key,
@@ -74,13 +86,17 @@ class OrderRouter:
         "side": signal.action,
         "quantity": quantity,
         "price": market_price,
-        "status": "COMPLETED",
+        "status": "COMPLETED" if res.get("success") else "REJECTED",
+        "error": res.get("error"),
         "mode": res.get("mode", "LIVE")
       }
 
     # Route based on Mode (Paper vs Live)
     if not settings.LIVE_TRADING:
-      fill = paper_engine.simulate_fill(trading_symbol, signal.action, quantity, market_price)
+      fill = paper_engine.simulate_fill(
+        trading_symbol, signal.action, quantity, market_price,
+        lot_size=int(opt["lot_size"])
+      )
       logger.info(f"[PAPER ORDER EXECUTED] {signal.action} {quantity} {trading_symbol} @ ₹{fill['fill_price']} for Account {risk_result.account_id}")
       return {
         "idempotency_key": idempotency_key,

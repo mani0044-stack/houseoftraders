@@ -14,7 +14,8 @@ class PaperTradingEngine:
     quantity: int,
     market_price: float,
     slippage_pct: float = 0.05,
-    brokerage_per_lot: float = 20.0
+    brokerage_per_lot: float = 20.0,
+    lot_size: Optional[int] = None,
   ) -> Dict[str, Any]:
     
     # Apply simulated slippage
@@ -22,8 +23,9 @@ class PaperTradingEngine:
     fill_price = market_price + slippage if side.upper() == "BUY" else market_price - slippage
     fill_price = round(fill_price, 2)
 
-    # Calculate brokerage charges
-    lots = max(1, quantity // 50)
+    # Calculate brokerage charges using the real contract lot size when known
+    effective_lot = int(lot_size or 0)
+    lots = max(1, quantity // effective_lot) if effective_lot > 0 else max(1, quantity // 50)
     total_charges = round(lots * brokerage_per_lot, 2)
 
     return {

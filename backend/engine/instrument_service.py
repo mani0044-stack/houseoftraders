@@ -112,19 +112,32 @@ class InstrumentService:
     if alt_sym in self.instruments_by_symbol:
       return self.instruments_by_symbol[alt_sym]
 
-    # Return structured fallback if symbol is an index or custom option contract
-    token = "99926000" if "NIFTY" in clean_sym and "BANK" not in clean_sym else "99926009" if "BANK" in clean_sym else "35001"
-    exchange = "NFO" if any(opt in clean_sym for opt in ["CE", "PE", "FUT"]) else "NSE"
-    lot = 15 if "BANKNIFTY" in clean_sym else 40 if "FINNIFTY" in clean_sym else 50 if "NIFTY" in clean_sym else 1
+    # Derivative symbols MUST resolve to a real Scrip Master row. Returning a
+    # fabricated/dummy token here is what caused orders to hit the wrong strike.
+    if any(opt in clean_sym for opt in ["CE", "PE", "FUT"]):
+      return None
 
-    return {
-      "symbol": clean_sym,
-      "token": token,
-      "name": clean_sym,
-      "exchange": exchange,
-      "lotsize": lot,
-      "tick_size": 0.05
+    # Only index spot symbols get a safe fallback token (they are not tradable
+    # option contracts anyway).
+    index_tokens = {
+      "NIFTY": ("99926000", 50),
+      "NIFTY 50": ("99926000", 50),
+      "BANKNIFTY": ("99926009", 15),
+      "FINNIFTY": ("99926037", 40),
+      "SENSEX": ("99919000", 10),
     }
+    if clean_sym in index_tokens:
+      token, lot = index_tokens[clean_sym]
+      return {
+        "symbol": clean_sym,
+        "token": token,
+        "name": clean_sym,
+        "exchange": "NSE",
+        "lotsize": lot,
+        "tick_size": 0.05
+      }
+
+    return None
 
   def search_instruments(self, query: str, limit: int = 25) -> List[Dict[str, Any]]:
     """Search instruments for frontend autocomplete."""

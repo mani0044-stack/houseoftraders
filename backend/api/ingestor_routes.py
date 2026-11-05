@@ -28,16 +28,40 @@ def ingest_sensibull_signal(payload: Dict[str, Any], db: Session = Depends(get_d
   strike = float(payload.get("strike", 0) or 0)
   option_type = str(payload.get("option_type") or payload.get("right") or "CE").upper()
   action = str(payload.get("action") or payload.get("side") or payload.get("transaction_type") or "BUY").upper()
-  quantity = int(payload.get("quantity") or payload.get("qty") or payload.get("lots", 1) * 50)
   order_type = str(payload.get("order_type") or "MARKET").upper()
   price = float(payload.get("price", 0) or 0)
+  trigger_price = float(payload.get("trigger_price") or payload.get("triggerprice") or 0)
   account_id = str(payload.get("account_id") or "acc-main-01")
+  expiry = payload.get("expiry", "")
+  exchange = "BFO" if underlying in ("SENSEX", "BANKEX") else "NFO"
 
-  # Resolve Trading Symbol & Token from Scrip Master
-  trading_symbol = payload.get("tradingsymbol") or f"{underlying}24SEP{int(strike)}{option_type}" if strike > 0 else f"{underlying}24SEP24850CE"
-  inst = instrument_service.get_instrument(trading_symbol)
-  token = inst.get("token", "35001") if inst else "35001"
-  exchange = inst.get("exchange", "NFO") if inst else "NFO"
+  # Resolve the EXACT contract from the Scrip Master (strike/expiry/option type).
+  from backend.broker.fo_order_manager import get_scrip_master
+  try:
+    info = get_scrip_master().lookup_fo_instrument(
+      symbol=underlying,
+      expiry=expiry,
+      strike=None if option_type in ("FUT", "FUTURE", "FUTURES") else strike,
+      option_type=option_type,
+      exchange=exchange,
+      tradingsymbol=payload.get("tradingsymbol"),
+      symboltoken=payload.get("symboltoken"),
+    )
+  except Exception as resolve_err:
+    raise HTTPException(status_code=400, detail=f"Contract resolution failed: {resolve_err}")
+
+  trading_symbol = info["tradingsymbol"]
+  token = info["symboltoken"]
+  exchange = info["exchange"]
+  lot_size = int(info["lotsize"] or 1)
+
+  lots = payload.get("lots")
+  if lots is not None:
+    quantity = int(lots) * lot_size
+  else:
+    quantity = int(payload.get("quantity") or payload.get("qty") or lot_size)
+    if quantity % lot_size != 0:
+      quantity = max(lot_size, (quantity // lot_size) * lot_size)
 
   # Active Angel One Session
   session = session_manager.get_session(account_id)
@@ -56,7 +80,11 @@ def ingest_sensibull_signal(payload: Dict[str, Any], db: Session = Depends(get_d
         quantity=quantity,
         price=price,
         order_type=order_type,
-        exchange=exchange
+        exchange=exchange,
+        trigger_price=trigger_price,
+        symboltoken=token,
+        tradingsymbol=trading_symbol,
+        lotsize=lot_size,
       )
     except Exception as e:
       logger.error(f"Error placing live Angel One SmartAPI order: {e}")

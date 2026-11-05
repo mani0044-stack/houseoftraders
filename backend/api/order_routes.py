@@ -61,8 +61,7 @@ def get_orders(db: Session = Depends(get_db)):
         totp_secret = vault.decrypt(acc.encrypted_totp_secret) if acc.encrypted_totp_secret else ""
         
         session = session_manager.get_or_create_session(acc.id, acc.client_id, api_key, pin, totp_secret)
-        if session.status == "CONNECTED":
-          live_orders = session.fetch_orders()
+        live_orders = session.fetch_orders() if session.status == "CONNECTED" else []
         for lo in live_orders:
           b_id = str(lo.get("orderid") or lo.get("brokerorderid") or "")
           if b_id and not any(r["brokerOrderId"] == b_id for r in result):
@@ -110,6 +109,40 @@ def create_order(payload: CreateOrderPayload, db: Session = Depends(get_db)):
   results = []
   timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+  # If the UI sent a derivative trading symbol, resolve the exact contract from the
+  # Scrip Master first. This also normalises the quantity to whole lots, so a
+  # hardcoded 50-share quantity can never be sent for a 65-share NIFTY contract.
+  resolved_contract = None
+  order_quantity = int(payload.quantity or 0)
+  order_symbol = payload.symbol
+  resolved_token = None
+  resolved_lot_size = None
+  resolved_exchange = None
+  normalized_order_type = payload.orderType
+  try:
+    from backend.broker.fo_order_manager import get_scrip_master, parse_fo_symbol, normalize_order_type
+    normalized_order_type = normalize_order_type(payload.orderType)
+    parsed = parse_fo_symbol(payload.symbol)
+    if parsed:
+      resolved_contract = get_scrip_master().lookup_fo_instrument(
+        symbol=parsed["underlying"],
+        expiry=parsed["expiry"],
+        strike=parsed["strike"],
+        option_type=parsed["option_type"],
+        exchange="BFO" if parsed["underlying"] in ("SENSEX", "BANKEX") else "NFO",
+      )
+      resolved_lot_size = int(resolved_contract["lotsize"] or 1)
+      if order_quantity <= 0:
+        order_quantity = resolved_lot_size
+      elif order_quantity % resolved_lot_size != 0:
+        order_quantity = max(resolved_lot_size, (order_quantity // resolved_lot_size) * resolved_lot_size)
+      order_symbol = resolved_contract["tradingsymbol"]
+      resolved_token = resolved_contract["symboltoken"]
+      resolved_exchange = resolved_contract["exchange"]
+  except Exception as resolve_err:
+    logger.warning(f"Could not resolve F&O contract for {payload.symbol}: {resolve_err}")
+    resolved_contract = None
+
   for acc in accounts_to_process:
     api_key = vault.decrypt(acc.encrypted_api_key) if acc.encrypted_api_key else ""
     pin = vault.decrypt(acc.encrypted_pin) if acc.encrypted_pin else ""
@@ -126,12 +159,16 @@ def create_order(payload: CreateOrderPayload, db: Session = Depends(get_db)):
 
     try:
       exec_res = session.place_order(
-        symbol=payload.symbol,
+        symbol=order_symbol,
         side=payload.side,
-        quantity=payload.quantity,
+        quantity=order_quantity,
         price=payload.price,
-        order_type=payload.orderType,
-        product_type=payload.productType
+        order_type=normalized_order_type,
+        product_type=payload.productType,
+        exchange=resolved_exchange,
+        symboltoken=resolved_token,
+        tradingsymbol=order_symbol if resolved_contract else None,
+        lotsize=resolved_lot_size,
       )
     except Exception as e:
       exec_res = {"success": False, "error": str(e)}
@@ -155,10 +192,10 @@ def create_order(payload: CreateOrderPayload, db: Session = Depends(get_db)):
       account_name=acc.name,
       algo_id=payload.algoId,
       algo_name=payload.algoName,
-      symbol=exec_res.get("symbol", payload.symbol),
+      symbol=exec_res.get("symbol", order_symbol),
       side=payload.side,
-      quantity=payload.quantity,
-      order_type=payload.orderType,
+      quantity=order_quantity,
+      order_type=normalized_order_type,
       price=payload.price if payload.price > 0 else 0.0,
       average_price=payload.price if payload.price > 0 else 0.0,
       status="COMPLETED",
@@ -173,7 +210,7 @@ def create_order(payload: CreateOrderPayload, db: Session = Depends(get_db)):
       account_name=acc.name,
       symbol=order_entry.symbol,
       side=payload.side,
-      quantity=payload.quantity,
+      quantity=order_quantity,
       price=payload.price,
       algo_id=payload.algoId or "MANUAL",
       algo_name=payload.algoName or "Manual Execution"
@@ -289,8 +326,8 @@ def place_fo_order_route(payload: Dict[str, Any], db: Session = Depends(get_db))
     """
     Direct F&O Order Execution wrapper route calling place_fo_order.
     """
-    from backend.broker.fo_order_manager import place_fo_order, AngelScripMaster
-    scrip_master = AngelScripMaster()
+    from backend.broker.fo_order_manager import place_fo_order, get_scrip_master
+    scrip_master = get_scrip_master()
 
     target_acc_id = payload.get("accountId")
     target_acc = None
@@ -328,15 +365,21 @@ def place_fo_order_route(payload: Dict[str, Any], db: Session = Depends(get_db))
         try:
             scrip_info = scrip_master.lookup_fo_instrument(
                 symbol=payload.get("symbol") or payload.get("underlying") or "NIFTY",
-                expiry=payload.get("expiry", "2026-10-27"),
+                expiry=payload.get("expiry", ""),
                 strike=payload.get("strike"),
                 option_type=payload.get("option_type") or payload.get("optiontype"),
-                exchange=payload.get("exchange", "NFO")
+                exchange=payload.get("exchange", "NFO"),
+                tradingsymbol=payload.get("tradingsymbol"),
+                symboltoken=payload.get("symboltoken"),
             )
             lots = int(payload.get("lots") or 1)
-            total_qty = lots * scrip_info["lotsize"]
+            total_qty = lots * int(scrip_info["lotsize"] or 1)
             mock_order_id = f"ANGEL-{uuid.uuid4().hex[:8].upper()}"
-            exec_price = float(payload.get("price", 0.0) or 145.50)
+            order_type = str(payload.get("order_type") or "MARKET").upper()
+            exec_price = float(payload.get("price", 0.0) or 0.0)
+            if exec_price <= 0:
+                # Demo fill reference price only; real orders use the broker LTP.
+                exec_price = 145.50
             trade_side = str(payload.get("transaction_type", "BUY")).upper()
 
             timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -351,7 +394,7 @@ def place_fo_order_route(payload: Dict[str, Any], db: Session = Depends(get_db))
                 symbol=scrip_info["tradingsymbol"],
                 side=trade_side,
                 quantity=total_qty,
-                order_type=str(payload.get("order_type", "MARKET")).upper(),
+                order_type=order_type,
                 price=exec_price,
                 average_price=exec_price,
                 status="COMPLETED",
@@ -389,10 +432,27 @@ def place_fo_order_route(payload: Dict[str, Any], db: Session = Depends(get_db))
     # Call production place_fo_order wrapper
     res = place_fo_order(payload, smart_api, scrip_master)
     if res.get("status") == "SUCCESS":
-        tsym = payload.get("tradingsymbol") or payload.get("symbol", "NIFTY")
-        qty = int(payload.get("lots", 1)) * 50
-        side_val = str(payload.get("transaction_type", "BUY")).upper()
-        p_val = float(payload.get("price", 0.0) or 0.0)
+        data = res.get("data") or {}
+        tsym = data.get("tradingsymbol") or payload.get("tradingsymbol") or payload.get("symbol", "NIFTY")
+        # Use the ACTUAL resolved quantity (lots x Scrip Master lot size), not a hardcoded 50.
+        qty = int(data.get("quantity") or 0)
+        if qty <= 0:
+            lots = int(payload.get("lots") or 1)
+            resolved_lot = 1
+            try:
+                info = scrip_master.lookup_fo_instrument(
+                    symbol=payload.get("symbol") or payload.get("underlying") or "",
+                    expiry=payload.get("expiry", ""),
+                    strike=payload.get("strike"),
+                    option_type=payload.get("option_type") or payload.get("optiontype"),
+                    exchange=payload.get("exchange", "NFO"),
+                )
+                resolved_lot = int(info.get("lotsize") or 1)
+            except Exception:
+                pass
+            qty = lots * resolved_lot
+        side_val = str(payload.get("transaction_type") or payload.get("side") or "BUY").upper()
+        p_val = float(data.get("price") or payload.get("price", 0.0) or 0.0)
         sync_position_on_order(db, acc_id, acc_name, tsym, side_val, qty, p_val)
 
     return res

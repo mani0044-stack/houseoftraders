@@ -66,10 +66,27 @@ export const SmartApiTerminalPage: React.FC = () => {
   const currentLotSize = resolvedScrip?.lotsize || (symbol === 'BANKNIFTY' ? 30 : symbol === 'FINNIFTY' ? 40 : symbol === 'NIFTY' ? 65 : 50);
   const totalShares = lots * currentLotSize;
 
+  // Load the current (non-expired) expiry list from the Scrip Master.
+  useEffect(() => {
+    let isMounted = true;
+    fetch(`/api/v1/options/expiries?underlying=${encodeURIComponent(symbol)}`)
+      .then((resp) => resp.json())
+      .then((dates: string[]) => {
+        if (isMounted && Array.isArray(dates) && dates.length > 0) {
+          setExpiry(dates[0]);
+        }
+      })
+      .catch(() => {});
+    return () => { isMounted = false; };
+  }, [symbol]);
+
   // Auto Lookup Scrip on parameter change
   useEffect(() => {
     let isMounted = true;
     const fetchScripDetails = async () => {
+      // Clear the previous contract immediately so a stale token can never be
+      // shown (or used) while the new strike/expiry is being resolved.
+      setResolvedScrip(null);
       setScripLoading(true);
       try {
         const resp = await fetch('/api/v1/market/lookup_scrip', {
@@ -87,19 +104,9 @@ export const SmartApiTerminalPage: React.FC = () => {
         if (isMounted && data.status === 'SUCCESS' && data.data) {
           setResolvedScrip(data.data);
         }
-      } catch (err) {
-        // Fallback mockup
-        if (isMounted) {
-          const expFormatted = expiry.replace(/-/g, '').toUpperCase();
-          const mockTradingSymbol = optionType === 'FUT' 
-            ? `${symbol}27OCT26FUT`
-            : `${symbol}13OCT26${strike}${optionType}`;
-          setResolvedScrip({
-            symboltoken: '44442',
-            tradingsymbol: mockTradingSymbol,
-            lotsize: currentLotSize
-          });
-        }
+      } catch {
+        // Backend re-resolves the exact contract from strike/expiry/option type.
+        if (isMounted) setResolvedScrip(null);
       } finally {
         if (isMounted) setScripLoading(false);
       }

@@ -7,6 +7,7 @@ Description: Production-ready backend script for validating, parsing, lookup,
 """
 
 import os
+import re
 import json
 import logging
 import datetime
@@ -21,6 +22,161 @@ logger = logging.getLogger(__name__)
 
 # Official Angel One OpenAPI Scrip Master Endpoint
 ANGEL_SCRIP_MASTER_URL = "https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenAPIScripMaster.json"
+
+# Angel One SmartAPI order types (these are the ONLY values the broker accepts)
+MARKET = "MARKET"
+LIMIT = "LIMIT"
+STOPLOSS_LIMIT = "STOPLOSS_LIMIT"
+STOPLOSS_MARKET = "STOPLOSS_MARKET"
+
+_ORDER_TYPE_ALIASES = {
+    "M": MARKET,
+    "MKT": MARKET,
+    "MARKET": MARKET,
+    "L": LIMIT,
+    "LIM": LIMIT,
+    "LIMIT": LIMIT,
+    "SL": STOPLOSS_LIMIT,
+    "SL-L": STOPLOSS_LIMIT,
+    "SL_LIMIT": STOPLOSS_LIMIT,
+    "STOPLOSS": STOPLOSS_LIMIT,
+    "STOP_LOSS": STOPLOSS_LIMIT,
+    "STOPLOSS_LIMIT": STOPLOSS_LIMIT,
+    "STOP_LOSS_LIMIT": STOPLOSS_LIMIT,
+    "SL-M": STOPLOSS_MARKET,
+    "SLM": STOPLOSS_MARKET,
+    "SL_M": STOPLOSS_MARKET,
+    "STOPLOSS_MARKET": STOPLOSS_MARKET,
+    "STOP_LOSS_MARKET": STOPLOSS_MARKET,
+}
+
+_OPTION_SYMBOL_RE = re.compile(r"^([A-Z]+)(\d{2}[A-Z]{3}\d{2})(\d+)(CE|PE)$")
+_FUT_SYMBOL_RE = re.compile(r"^([A-Z]+)(\d{2}[A-Z]{3}\d{2})FUT$")
+
+# Module level cached Scrip Master. Loading/indexing 150k+ instruments is expensive,
+# so it must be created once per process instead of per API request.
+_SCRIP_MASTER_SINGLETON: Optional["AngelScripMaster"] = None
+
+
+def get_scrip_master() -> "AngelScripMaster":
+    """Return the process-wide AngelScripMaster singleton."""
+    global _SCRIP_MASTER_SINGLETON
+    if _SCRIP_MASTER_SINGLETON is None:
+        _SCRIP_MASTER_SINGLETON = AngelScripMaster()
+    return _SCRIP_MASTER_SINGLETON
+
+
+def normalize_order_type(raw_order_type: Any) -> str:
+    """Map any UI/API alias (SL, SL-M, MKT, ...) to a valid Angel One order type."""
+    cleaned = str(raw_order_type or MARKET).strip().upper().replace(" ", "_")
+    return _ORDER_TYPE_ALIASES.get(cleaned, cleaned)
+
+
+def is_stoploss_order(order_type: str) -> bool:
+    return normalize_order_type(order_type) in (STOPLOSS_LIMIT, STOPLOSS_MARKET)
+
+
+def safe_tick_size(raw_tick: Any) -> float:
+    """
+    Scrip Master reports tick sizes in paise (NFO options = 5.0, equity = 1.0).
+    Convert them to rupees and fall back to the standard ₹0.05 tick.
+    """
+    try:
+        tick = float(raw_tick or 0)
+    except (TypeError, ValueError):
+        return 0.05
+    if tick <= 0:
+        return 0.05
+    if tick >= 1:
+        tick = tick / 100.0
+    return tick if tick >= 0.01 else 0.05
+
+
+def round_to_tick(value: float, tick_size: float = 0.05) -> float:
+    """Round a price to the instrument tick size."""
+    tick = safe_tick_size(tick_size)
+    return round(round(float(value) / tick) * tick, 4)
+
+
+def build_price_fields(
+    order_type: str,
+    price: Any = 0,
+    trigger_price: Any = 0,
+    tick_size: float = 0.05,
+) -> Tuple[Optional[str], str, Optional[str]]:
+    """
+    Build Angel One compatible price/triggerprice strings for an order type.
+
+    Returns: (price_str, trigger_price_str, error_message)
+      - MARKET / STOPLOSS_MARKET -> price "0"
+      - LIMIT / STOPLOSS_LIMIT  -> price must be > 0
+      - stoploss orders         -> trigger price must be > 0
+    """
+    ot = normalize_order_type(order_type)
+
+    if ot in (MARKET, STOPLOSS_MARKET):
+        price_str = "0"
+    else:
+        try:
+            p = float(price or 0)
+        except (TypeError, ValueError):
+            return None, "0", f"Invalid price format: '{price}'"
+        if p <= 0:
+            return None, "0", f"A positive limit price is required for {ot} orders."
+        price_str = f"{round_to_tick(p, tick_size):.2f}"
+
+    trigger_str = "0"
+    if ot in (STOPLOSS_LIMIT, STOPLOSS_MARKET):
+        try:
+            t = float(trigger_price or 0)
+        except (TypeError, ValueError):
+            return price_str, "0", f"Invalid trigger price format: '{trigger_price}'"
+        if t <= 0:
+            return price_str, "0", f"A positive trigger price is required for {ot} orders."
+        trigger_str = f"{round_to_tick(t, tick_size):.2f}"
+
+    return price_str, trigger_str, None
+
+
+def parse_fo_symbol(tradingsymbol: str) -> Optional[Dict[str, Any]]:
+    """
+    Parse an Angel One F&O trading symbol into its components.
+
+    Examples:
+      NIFTY09NOV2620050CE -> NIFTY / 09NOV2026 / 20050.0 / CE
+      BANKNIFTY27NOV2653000PE -> BANKNIFTY / 27NOV2026 / 53000.0 / PE
+      NIFTY27NOV26FUT -> NIFTY / 27NOV2026 / None / FUT
+    """
+    if not tradingsymbol:
+        return None
+
+    sym = str(tradingsymbol).strip().upper().replace(" ", "")
+
+    def expand(exp: str) -> str:
+        # 09NOV26 -> 09NOV2026
+        return f"{exp[:-2]}20{exp[-2:]}"
+
+    match = _OPTION_SYMBOL_RE.match(sym)
+    if match:
+        underlying, exp, strike, option_type = match.groups()
+        return {
+            "underlying": underlying,
+            "expiry": expand(exp),
+            "strike": float(strike),
+            "option_type": option_type,
+        }
+
+    match = _FUT_SYMBOL_RE.match(sym)
+    if match:
+        underlying, exp = match.groups()
+        return {
+            "underlying": underlying,
+            "expiry": expand(exp),
+            "strike": None,
+            "option_type": "FUT",
+        }
+
+    return None
 
 class AngelScripMaster:
     """
@@ -156,6 +312,41 @@ class AngelScripMaster:
 
         logger.info(f"Indexed {len(self._indexed_fo)} F&O keys across {len(self._raw_data)} total instruments.")
 
+    def _item_to_info(self, item: Dict[str, Any], default_exchange: str = "NFO") -> Dict[str, Any]:
+        return {
+            "symboltoken": str(item.get("token")),
+            "tradingsymbol": str(item.get("symbol")),
+            "lotsize": int(item.get("lotsize", 1) or 1),
+            "exchange": str(item.get("exch_seg", default_exchange)).upper(),
+            "instrumenttype": str(item.get("instrumenttype", "")),
+            # Normalise paise -> rupees (Scrip Master NFO options report 5.0 = ₹0.05)
+            "tick_size": safe_tick_size(item.get("tick_size", 0.05)),
+            "strike": float(item.get("strike", 0) or 0),
+            "expiry": self._parse_expiry(item.get("expiry", "")),
+        }
+
+    def lookup_by_symbol(self, tradingsymbol: str) -> Optional[Dict[str, Any]]:
+        """Exact trading-symbol lookup (option, future or equity) in the Scrip Master."""
+        if not tradingsymbol:
+            return None
+        item = self._trading_symbol_map.get(str(tradingsymbol).strip().upper())
+        return self._item_to_info(item) if item else None
+
+    def lookup_by_token(self, symboltoken: str) -> Optional[Dict[str, Any]]:
+        """Exact token lookup in the Scrip Master."""
+        if not symboltoken:
+            return None
+        item = self._token_map.get(str(symboltoken).strip())
+        return self._item_to_info(item) if item else None
+
+    @staticmethod
+    def _strike_matches(cand_strike: float, target_strike: float) -> bool:
+        # Angel One stores option strikes multiplied by 100 (e.g. 2485000.0 for 24850)
+        return (
+            abs(cand_strike - target_strike) < 0.01 or
+            abs((cand_strike / 100.0) - target_strike) < 0.01
+        )
+
     def lookup_fo_instrument(
         self,
         symbol: str,
@@ -169,6 +360,11 @@ class AngelScripMaster:
         """
         Looks up exact symboltoken, tradingsymbol, and lot_size for F&O contracts.
 
+        IMPORTANT: Any token/tradingsymbol supplied by the UI is treated as a hint only.
+        It is used ONLY when it matches the requested underlying/expiry/strike/option type.
+        Otherwise the canonical contract is resolved from the Scrip Master, which prevents
+        stale UI tokens from routing an order to the wrong strike.
+
         Returns:
             Dict containing:
             {
@@ -180,36 +376,70 @@ class AngelScripMaster:
                 "tick_size": 0.05
             }
         """
-        # If tradingsymbol or token provided directly by UI, check direct index
+        sym_clean = (symbol or "").strip().upper()
+        exp_clean = self._parse_expiry(expiry) if expiry else ""
+        exch_clean = exchange.strip().upper() if exchange else "NFO"
+        opt_clean = option_type.strip().upper() if option_type else None
+
+        target_strike: Optional[float] = None
+        try:
+            if strike is not None and str(strike).strip() != "":
+                target_strike = float(strike)
+        except (TypeError, ValueError):
+            target_strike = None
+        if target_strike == 0:
+            target_strike = None
+
+        def matches(item: Dict[str, Any]) -> bool:
+            item_exch = str(item.get("exch_seg", "")).upper()
+            item_name = str(item.get("name", "")).upper()
+            item_tsym = str(item.get("symbol", "")).upper()
+            if exch_clean and item_exch and item_exch != exch_clean:
+                return False
+            if exp_clean and self._parse_expiry(item.get("expiry", "")) != exp_clean:
+                return False
+            if sym_clean and item_name != sym_clean and item_tsym != sym_clean:
+                return False
+            if opt_clean and opt_clean not in ("FUT", "FUTURE", "FUTURES", "XX"):
+                if not item_tsym.endswith(opt_clean):
+                    return False
+            if target_strike is not None:
+                try:
+                    if not self._strike_matches(float(item.get("strike", 0)), target_strike):
+                        return False
+                except (TypeError, ValueError):
+                    return False
+            return True
+
+        # Use UI supplied token/symbol only if it genuinely matches the requested contract
         if symboltoken and symboltoken in self._token_map:
             item = self._token_map[symboltoken]
-            return {
-                "symboltoken": str(item.get("token")),
-                "tradingsymbol": str(item.get("symbol")),
-                "lotsize": int(item.get("lotsize", 1) or 1),
-                "exchange": str(item.get("exch_seg", exchange)).upper(),
-                "instrumenttype": str(item.get("instrumenttype", "")),
-                "tick_size": float(item.get("tick_size", 0.05) or 0.05)
-            }
+            if matches(item):
+                return self._item_to_info(item, exch_clean)
+            logger.warning(
+                "UI supplied symboltoken %s (%s) does not match requested contract "
+                "%s %s %s %s - ignoring stale token and re-resolving.",
+                symboltoken, item.get("symbol"), sym_clean, exp_clean, strike, option_type
+            )
 
         if tradingsymbol and tradingsymbol.upper() in self._trading_symbol_map:
             item = self._trading_symbol_map[tradingsymbol.upper()]
-            return {
-                "symboltoken": str(item.get("token")),
-                "tradingsymbol": str(item.get("symbol")),
-                "lotsize": int(item.get("lotsize", 1) or 1),
-                "exchange": str(item.get("exch_seg", exchange)).upper(),
-                "instrumenttype": str(item.get("instrumenttype", "")),
-                "tick_size": float(item.get("tick_size", 0.05) or 0.05)
-            }
+            if matches(item):
+                return self._item_to_info(item, exch_clean)
+            logger.warning(
+                "UI supplied tradingsymbol %s does not match requested contract "
+                "%s %s %s %s - ignoring stale symbol and re-resolving.",
+                tradingsymbol, sym_clean, exp_clean, strike, option_type
+            )
 
-        if not symbol or not expiry:
+        # If no expiry was supplied but an exact trading symbol was, return it directly.
+        if not exp_clean and tradingsymbol and tradingsymbol.upper() in self._trading_symbol_map:
+            return self._item_to_info(self._trading_symbol_map[tradingsymbol.upper()], exch_clean)
+        if not exp_clean and symboltoken and symboltoken in self._token_map:
+            return self._item_to_info(self._token_map[symboltoken], exch_clean)
+
+        if not sym_clean or not exp_clean:
             raise ValueError("Symbol and Expiry date are mandatory for F&O lookup.")
-
-        sym_clean = symbol.strip().upper()
-        exp_clean = self._parse_expiry(expiry)
-        exch_clean = exchange.strip().upper() if exchange else "NFO"
-        opt_clean = option_type.strip().upper() if option_type else None
 
         composite_key = (sym_clean, exp_clean, exch_clean)
         candidates = self._indexed_fo.get(composite_key, [])
@@ -220,6 +450,13 @@ class AngelScripMaster:
             composite_key_alt = (alt_sym, exp_clean, exch_clean)
             candidates = self._indexed_fo.get(composite_key_alt, [])
 
+        if not candidates and exch_clean == "NFO":
+            # Sensex contracts live on BFO; allow transparent cross-exchange lookup
+            alt_key = (sym_clean, exp_clean, "BFO")
+            candidates = self._indexed_fo.get(alt_key, [])
+            if candidates:
+                exch_clean = "BFO"
+
         if not candidates:
             raise ValueError(
                 f"No scrip found in Scrip Master for Underlying: '{sym_clean}', "
@@ -228,8 +465,13 @@ class AngelScripMaster:
 
         is_futures = (
             (opt_clean in ["FUT", "FUTURE", "FUTURES", "XX"]) or
-            (strike is None or float(strike or 0) == 0)
+            (opt_clean is None and target_strike is None)
         )
+
+        if not is_futures and target_strike is None:
+            raise ValueError(
+                f"Strike price is required to resolve {sym_clean} {exp_clean} {opt_clean} contract."
+            )
 
         for cand in candidates:
             itype = cand.get("instrumenttype", "").upper()
@@ -237,34 +479,18 @@ class AngelScripMaster:
 
             if is_futures:
                 if itype in ["FUTIDX", "FUTSTK"] or tsym.endswith("FUT"):
-                    return {
-                        "symboltoken": str(cand.get("token")),
-                        "tradingsymbol": str(cand.get("symbol")),
-                        "lotsize": int(cand.get("lotsize", 1) or 1),
-                        "exchange": exch_clean,
-                        "instrumenttype": itype,
-                        "tick_size": float(cand.get("tick_size", 0.05) or 0.05)
-                    }
+                    return self._item_to_info(cand, exch_clean)
             else:
                 if opt_clean and not tsym.endswith(opt_clean):
                     continue
 
                 try:
                     cand_strike = float(cand.get("strike", 0))
-                    target_strike = float(strike)
                 except (ValueError, TypeError):
                     continue
 
-                # Angel One scrip master stores option strike either in standard units or multiplied by 100
-                if abs(cand_strike - target_strike) < 0.01 or abs((cand_strike / 100.0) - target_strike) < 0.01:
-                    return {
-                        "symboltoken": str(cand.get("token")),
-                        "tradingsymbol": str(cand.get("symbol")),
-                        "lotsize": int(cand.get("lotsize", 1) or 1),
-                        "exchange": exch_clean,
-                        "instrumenttype": itype,
-                        "tick_size": float(cand.get("tick_size", 0.05) or 0.05)
-                    }
+                if self._strike_matches(cand_strike, target_strike):
+                    return self._item_to_info(cand, exch_clean)
 
         raise ValueError(
             f"No matching F&O contract found for {sym_clean} Expiry:{exp_clean} "
@@ -304,37 +530,106 @@ def place_fo_order(
         exchange = raw_exchange
 
         # 2. Scrip Lookup & Lot Size Retrieval
-        symboltoken = ui_payload.get("symboltoken")
-        tradingsymbol = ui_payload.get("tradingsymbol")
-        lot_size = ui_payload.get("lotsize") or ui_payload.get("lot_size")
+        #    The canonical contract is ALWAYS re-resolved from the Scrip Master.
+        #    UI supplied token/symbol/lotsize are only hints and must match the
+        #    requested underlying + expiry + strike + option type.
+        if not scrip_master:
+            scrip_master = get_scrip_master()
 
-        if not symboltoken or not tradingsymbol or not lot_size:
-            if not scrip_master:
-                scrip_master = AngelScripMaster()
+        requested_symbol = (
+            ui_payload.get("symbol") or
+            ui_payload.get("underlying") or
+            ui_payload.get("name", "")
+        )
+        requested_expiry = ui_payload.get("expiry", "")
+        requested_strike = ui_payload.get("strike")
+        requested_option_type = ui_payload.get("option_type") or ui_payload.get("optiontype")
+        ui_symboltoken = ui_payload.get("symboltoken")
+        ui_tradingsymbol = ui_payload.get("tradingsymbol")
 
-            scrip_info = scrip_master.lookup_fo_instrument(
-                symbol=ui_payload.get("symbol") or ui_payload.get("underlying") or ui_payload.get("name", ""),
-                expiry=ui_payload.get("expiry", ""),
-                strike=ui_payload.get("strike"),
-                option_type=ui_payload.get("option_type") or ui_payload.get("optiontype"),
-                exchange=exchange,
-                tradingsymbol=tradingsymbol,
-                symboltoken=symboltoken
-            )
-            symboltoken = scrip_info["symboltoken"]
-            tradingsymbol = scrip_info["tradingsymbol"]
-            lot_size = scrip_info["lotsize"]
+        # If the UI supplied a symbol only (no underlying), parse the contract out of it.
+        if not requested_expiry or requested_strike in (None, "", 0):
+            parsed = parse_fo_symbol(ui_tradingsymbol or requested_symbol)
+            if parsed:
+                requested_symbol = parsed["underlying"]
+                requested_expiry = parsed["expiry"]
+                if requested_strike in (None, "", 0):
+                    requested_strike = parsed["strike"]
+                if not requested_option_type:
+                    requested_option_type = parsed["option_type"]
+                exchange = "BFO" if parsed["underlying"] in ("SENSEX", "BANKEX") else exchange
 
-        # 3. Quantity Calculation: (UI Lots * Scrip Lot Size)
-        raw_lots = ui_payload.get("lots") or ui_payload.get("quantity_lots") or ui_payload.get("no_of_lots") or 1
         try:
-            lots_count = int(raw_lots)
-            if lots_count <= 0:
-                raise ValueError("Lots count must be a positive integer.")
-        except Exception:
-            return {"status": "FAILED", "error": f"Invalid lots parameter: '{raw_lots}'"}
+            scrip_info = scrip_master.lookup_fo_instrument(
+                symbol=requested_symbol,
+                expiry=requested_expiry,
+                strike=requested_strike,
+                option_type=requested_option_type,
+                exchange=exchange,
+                tradingsymbol=ui_tradingsymbol,
+                symboltoken=ui_symboltoken
+            )
+        except Exception as lookup_err:
+            # Never silently fall back to a UI token - that is how orders end up
+            # on the wrong strike. Fail loudly instead.
+            return {
+                "status": "FAILED",
+                "error": f"Could not resolve exact contract for the requested strike: {lookup_err}",
+                "error_code": "CONTRACT_RESOLUTION_FAILED",
+                "factor": "INVALID_SYMBOL_TOKEN",
+                "factor_title": "Contract Resolution",
+                "factor_badge": "WRONG / UNRESOLVED CONTRACT",
+                "factor_color": "rose",
+                "factor_summary": "The requested strike/expiry could not be matched to an Angel One instrument.",
+                "explanation": str(lookup_err),
+                "actionable_solution": (
+                    "1. Verify the expiry date is a valid, non-expired F&O expiry.\n"
+                    "2. Verify the strike is a valid strike step for the underlying.\n"
+                    "3. Refresh the Scrip Master (backend/data/scrip_master.json)."
+                ),
+                "suggested_action": "CHECK_CONTRACT",
+                "additional_data": {
+                    "symbol": requested_symbol,
+                    "expiry": requested_expiry,
+                    "strike": requested_strike,
+                    "option_type": requested_option_type,
+                    "exchange": exchange,
+                },
+                "all_factors_evaluated": [],
+            }
 
-        total_shares = lots_count * int(lot_size)
+        symboltoken = scrip_info["symboltoken"]
+        tradingsymbol = scrip_info["tradingsymbol"]
+        lot_size = int(scrip_info["lotsize"] or 1)
+        tick_size = safe_tick_size(scrip_info.get("tick_size", 0.05))
+        exchange = scrip_info.get("exchange", exchange)
+
+        # 3. Quantity Calculation: (UI Lots * Scrip Master Lot Size)
+        #    Lot size always comes from the resolved contract, never from the UI.
+        raw_lots = (
+            ui_payload.get("lots") or
+            ui_payload.get("quantity_lots") or
+            ui_payload.get("no_of_lots")
+        )
+
+        if raw_lots is None and ui_payload.get("quantity") is not None:
+            # Caller supplied total quantity instead of lots. Snap it to whole lots.
+            try:
+                requested_qty = int(ui_payload.get("quantity"))
+            except (TypeError, ValueError):
+                return {"status": "FAILED", "error": f"Invalid quantity: '{ui_payload.get('quantity')}'"}
+            if requested_qty <= 0:
+                return {"status": "FAILED", "error": "Quantity must be a positive integer."}
+            lots_count = max(1, requested_qty // lot_size)
+        else:
+            try:
+                lots_count = int(raw_lots if raw_lots is not None else 1)
+                if lots_count <= 0:
+                    raise ValueError("Lots count must be a positive integer.")
+            except Exception:
+                return {"status": "FAILED", "error": f"Invalid lots parameter: '{raw_lots}'"}
+
+        total_shares = lots_count * lot_size
         quantity_str = str(total_shares)
 
         # 4. Product Type Mapping
@@ -351,28 +646,26 @@ def place_fo_order(
             product_type = "CARRYFORWARD"
 
         # 5. Order Type & Price Formatting
-        raw_order_type = str(
+        order_type = normalize_order_type(
             ui_payload.get("order_type") or
-            ui_payload.get("ordertype") or "MARKET"
-        ).upper()
-        order_type = raw_order_type
+            ui_payload.get("ordertype") or MARKET
+        )
+        if order_type not in (MARKET, LIMIT, STOPLOSS_LIMIT, STOPLOSS_MARKET):
+            return {"status": "FAILED", "error": f"Unsupported order type: '{order_type}'"}
 
-        if order_type == "MARKET":
-            price_str = "0"
-        else:
-            raw_price = ui_payload.get("price", 0)
-            try:
-                price_str = f"{float(raw_price):.2f}"
-            except Exception:
-                return {"status": "FAILED", "error": f"Invalid price format: '{raw_price}'"}
-
-        trigger_price_str = "0"
-        if "STOPLOSS" in order_type:
-            raw_trigger = ui_payload.get("trigger_price") or ui_payload.get("triggerprice") or 0
-            try:
-                trigger_price_str = f"{float(raw_trigger):.2f}"
-            except Exception:
-                return {"status": "FAILED", "error": f"Invalid trigger price format: '{raw_trigger}'"}
+        raw_trigger = (
+            ui_payload.get("trigger_price") or
+            ui_payload.get("triggerprice") or
+            ui_payload.get("trigger") or 0
+        )
+        price_str, trigger_price_str, price_err = build_price_fields(
+            order_type=order_type,
+            price=ui_payload.get("price", 0),
+            trigger_price=raw_trigger,
+            tick_size=tick_size,
+        )
+        if price_err:
+            return {"status": "FAILED", "error": price_err, "error_code": "INVALID_ORDER_PRICE"}
 
         # 6. Transaction Type (BUY or SELL)
         transaction_type = str(
@@ -380,6 +673,9 @@ def place_fo_order(
             ui_payload.get("side") or
             ui_payload.get("transactiontype") or "BUY"
         ).upper()
+
+        if transaction_type not in ("BUY", "SELL"):
+            return {"status": "FAILED", "error": f"Invalid transaction type: '{transaction_type}'"}
 
         variety = str(ui_payload.get("variety", "NORMAL")).upper()
 
@@ -399,16 +695,23 @@ def place_fo_order(
             "quantity": quantity_str
         }
 
-        if "STOPLOSS" in order_type:
+        if order_type in (STOPLOSS_LIMIT, STOPLOSS_MARKET):
             order_params["triggerprice"] = trigger_price_str
 
         # 7.1 Pre-Trade Risk & Freeze Limit Validation
-        is_valid, warnings, pre_errors = pre_validate_order(ui_payload)
+        # Pass the resolved quantity/order type so lot-size based freeze checks are exact.
+        validation_payload = dict(ui_payload)
+        validation_payload.update({
+            "quantity": total_shares,
+            "order_type": order_type,
+            "price": price_str,
+        })
+        is_valid, warnings, pre_errors = pre_validate_order(validation_payload)
         if not is_valid and pre_errors:
             first_err = pre_errors[0]
             diagnosed = diagnose_rejection(
                 {"message": first_err["message"], "errorCode": first_err["factor"]},
-                ui_payload
+                validation_payload
             )
             return {
                 "status": "FAILED",
@@ -433,13 +736,25 @@ def place_fo_order(
 
         # Inspect Angel One SmartAPI Response Payload
         # Support both dictionary response (from patched SmartAPI) and string orderid
+        resolved_info = {
+            "tradingsymbol": tradingsymbol,
+            "symboltoken": str(symboltoken),
+            "exchange": exchange,
+            "quantity": total_shares,
+            "lots": lots_count,
+            "lotsize": lot_size,
+            "order_type": order_type,
+            "price": float(price_str or 0),
+            "trigger_price": float(trigger_price_str or 0),
+        }
+
         if isinstance(res, str) and res.strip():
             order_id = res.strip()
             return {
                 "status": "SUCCESS",
                 "order_id": order_id,
                 "message": "Order placed successfully",
-                "data": {"orderid": order_id}
+                "data": {"orderid": order_id, **resolved_info}
             }
 
         if isinstance(res, dict) and (res.get("status") is True or res.get("success") is True):
@@ -449,7 +764,7 @@ def place_fo_order(
                 "status": "SUCCESS",
                 "order_id": str(order_id),
                 "message": res.get("message", "Order placed successfully"),
-                "data": data
+                "data": {**data, **resolved_info}
             }
         else:
             # Diagnose rejection against all 6 critical factors

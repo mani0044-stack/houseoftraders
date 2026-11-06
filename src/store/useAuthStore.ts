@@ -9,7 +9,6 @@ interface AuthState {
   error: string | null;
 
   login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string, name?: string) => Promise<boolean>;
   logout: () => void;
   checkAuth: () => Promise<boolean>;
   clearError: () => void;
@@ -66,34 +65,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         const errorDetail =
           err.response?.data?.detail ||
           err.message ||
-          'Failed to sign in. Please verify your credentials.';
-        set({ error: errorDetail, isLoading: false });
-        return false;
-      }
-    },
-
-    register: async (email: string, password: string, name?: string): Promise<boolean> => {
-      set({ isLoading: true, error: null });
-      try {
-        const res = await authApi.register(email, password, name);
-        const { access_token, user } = res;
-
-        localStorage.setItem('hot_auth_token', access_token);
-        localStorage.setItem('hot_auth_user', JSON.stringify(user));
-
-        set({
-          token: access_token,
-          user,
-          isAuthenticated: true,
-          isLoading: false,
-          error: null,
-        });
-        return true;
-      } catch (err: any) {
-        const errorDetail =
-          err.response?.data?.detail ||
-          err.message ||
-          'Failed to create account. Please try again.';
+          'Invalid credentials. Please check your email and password.';
         set({ error: errorDetail, isLoading: false });
         return false;
       }
@@ -133,4 +105,3 @@ export const useAuthStore = create<AuthState>((set, get) => {
     },
   };
 });
-

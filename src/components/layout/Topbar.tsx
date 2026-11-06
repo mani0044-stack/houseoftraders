@@ -213,7 +213,7 @@ export const Topbar: React.FC = () => {
             <div className="absolute right-0 mt-2 w-56 bg-white border border-[#E3E8E6] rounded-2xl shadow-xl py-1.5 z-50 text-xs animate-fade-scale">
               <div className="px-3.5 py-2.5 border-b border-[#E3E8E6]">
                 <p className="font-bold text-[#12211C] truncate">{user?.name || 'Administrator'}</p>
-                <p className="text-[10px] text-[#6B7C75] font-mono truncate">{user?.email || 'admin@houseoftraders.io'}</p>
+                <p className="text-[10px] text-[#6B7C75] font-mono truncate">{user?.email || 'Account'}</p>
               </div>
               <div className="px-3.5 py-2 space-y-1 text-[#6B7C75]">
                 <div className="flex items-center justify-between text-[11px]">

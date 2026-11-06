@@ -95,8 +95,16 @@ routes SmartAPI authentication and every order/data call through the configured 
 2. Whitelist `ANGEL_STATIC_IP` in **Angel One → SmartAPI → Static IP** settings.
 3. Restart the backend, then verify with:
    ```bash
-   curl http://localhost:8000/api/v1/accounts/proxy-status
+   curl "http://localhost:8000/api/v1/accounts/proxy-status?verify=true"
    ```
+   `matchesStaticIp` must be `true`.
+
+> **Vercel/serverless:** the deployed backend runs on AWS with changing public IPs.
+> Setting the proxy only in your local `.env.local` does **not** affect it. Add
+> `ANGEL_PROXY_URL` and `ANGEL_STATIC_IP` in **Vercel → Project → Settings →
+> Environment Variables** (Production + Preview), then redeploy. Otherwise orders
+> are rejected with `AG7002` from an AWS IP. Verify the deployed endpoint:
+> `https://<your-domain>/api/v1/accounts/proxy-status?verify=true`.
 
 `ANGEL_STATIC_IP` is optional when the proxy host is itself the egress IP; it is then
 derived from `ANGEL_PROXY_URL`. Credentials are never written to logs or API responses.

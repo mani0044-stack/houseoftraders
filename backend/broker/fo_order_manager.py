@@ -16,6 +16,7 @@ import pyotp
 from typing import Dict, Any, Optional, Tuple, Union
 
 import backend.broker.patch_smartapi  # Apply SmartConnect placeOrder and IP patches
+from backend.broker.patch_smartapi import enforce_static_ip_egress
 from backend.broker.rejection_analyzer import diagnose_rejection, pre_validate_order, calculate_order_slices
 
 logger = logging.getLogger(__name__)
@@ -732,6 +733,9 @@ def place_fo_order(
         logger.info(f"Submitting F&O order to Angel One: {order_params}")
 
         # 8. Execute Order via SmartConnect instance inside Try-Except block
+        #    Re-apply the static-IP proxy immediately before transmission so the
+        #    order always exits from the whitelisted egress IP.
+        enforce_static_ip_egress(smart_connect_instance, context="F&O order placement")
         res = smart_connect_instance.placeOrder(order_params)
 
         # Inspect Angel One SmartAPI Response Payload

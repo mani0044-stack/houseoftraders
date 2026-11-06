@@ -215,7 +215,7 @@ def diagnose_rejection(
         raw_msg = "Broker rejected order execution without specific message payload."
 
     raw_lower = raw_msg.lower()
-    code_upper = error_code.upper()
+    code_lower = error_code.lower()
 
     factor = RejectionFactor.UNKNOWN_REJECTION
     explanation = ""
@@ -227,10 +227,13 @@ def diagnose_rejection(
     # FACTOR 6: Session, Token & IP Authorization (AG7002, AG8001, AG8002, etc.)
     # =====================================================================
     if (
-        "ag7002" in code_upper or
+        "ag7002" in code_lower or
         "not a registered ip" in raw_lower or
         "registered ip" in raw_lower or
         "check your registered ip" in raw_lower or
+        "not whitelisted" in raw_lower or
+        "whitelisted" in raw_lower or
+        "public ip" in raw_lower or
         "ip address" in raw_lower
     ):
         factor = RejectionFactor.SESSION_TOKEN_IP_EXPIRY
@@ -239,22 +242,63 @@ def diagnose_rejection(
         additional_data["detected_ip"] = detected_ip
         additional_data["portal_url"] = "https://smartapi.angelbroking.com"
 
-        explanation = (
-            f"Angel One SmartAPI blocked this trade because your current public IP ({detected_ip}) "
-            "is not whitelisted in your Angel One Developer Portal app settings (Error Code: AG7002)."
-        )
-        actionable_solution = (
-            f"1. Open https://smartapi.angelbroking.com and log in.\n"
-            f"2. Go to 'Apps' -> Click 'Edit' on your Trading App API Key.\n"
-            f"3. In the 'Allowed IP Address / Client Local IP' field, add your IP: {detected_ip} (or set to dynamic/leave blank if your provider allows).\n"
-            f"4. Click 'Save Changes' and re-authenticate your account."
-        )
-        suggested_action = "UPDATE_IP_WHITELIST"
+        from backend.config import settings
+        proxy_enabled = settings.angel_proxy_enabled
+        configured_static_ip = settings.angel_static_ip
+        additional_data["proxy_enabled"] = proxy_enabled
+        additional_data["configured_static_ip"] = configured_static_ip or None
+
+        if proxy_enabled and configured_static_ip and detected_ip != configured_static_ip:
+            # The proxy is configured but this request did not use it. This is the
+            # signature of a deployed backend (e.g. Vercel/AWS) whose runtime env
+            # lacks the proxy settings, while the local .env.local has them.
+            explanation = (
+                f"Angel One blocked this trade because it saw public IP {detected_ip}, but the "
+                f"configured static egress IP is {configured_static_ip}. The order did NOT leave "
+                "through the static-IP proxy (Error Code: AG7002)."
+            )
+            actionable_solution = (
+                "1. Identify the backend that actually placed this order. In production this is "
+                "usually the deployed server (e.g. Vercel serverless / AWS), not your local machine.\n"
+                "2. Set ANGEL_PROXY_URL and ANGEL_STATIC_IP in THAT deployment's runtime environment "
+                "(Vercel: Project -> Settings -> Environment Variables) and redeploy.\n"
+                f"3. Verify that deployment: GET /api/v1/accounts/proxy-status?verify=true must return "
+                f"observedIp={configured_static_ip} and matchesStaticIp=true.\n"
+                f"4. Whitelist {configured_static_ip} in https://smartapi.angelbroking.com -> Apps -> Edit.\n"
+                "5. Re-authenticate the account and retry the order."
+            )
+            suggested_action = "CONFIGURE_STATIC_PROXY_ON_BACKEND"
+        elif not proxy_enabled:
+            explanation = (
+                f"Angel One SmartAPI blocked this trade because the backend's public IP ({detected_ip}) "
+                "is not whitelisted. No static-IP egress proxy is configured on this backend "
+                "(Error Code: AG7002)."
+            )
+            actionable_solution = (
+                "1. Set ANGEL_PROXY_URL and ANGEL_STATIC_IP in the runtime environment of the backend "
+                "that places orders (local .env.local, Vercel/AWS env vars, or Docker env).\n"
+                f"2. Whitelist the proxy's egress IP in https://smartapi.angelbroking.com -> Apps -> Edit.\n"
+                "3. Restart/redeploy the backend and verify /api/v1/accounts/proxy-status?verify=true.\n"
+                f"Alternatively, whitelist this backend's IP: {detected_ip} (only if it is truly static)."
+            )
+            suggested_action = "UPDATE_IP_WHITELIST"
+        else:
+            explanation = (
+                f"Angel One SmartAPI blocked this trade because your static egress IP ({detected_ip}) "
+                "is not whitelisted in your Angel One Developer Portal app settings (Error Code: AG7002)."
+            )
+            actionable_solution = (
+                f"1. Open https://smartapi.angelbroking.com and log in.\n"
+                f"2. Go to 'Apps' -> Click 'Edit' on your Trading App API Key.\n"
+                f"3. In the 'Allowed IP Address / Client Local IP' field, add the static IP: {detected_ip}.\n"
+                f"4. Click 'Save Changes' and re-authenticate your account."
+            )
+            suggested_action = "UPDATE_IP_WHITELIST"
 
     elif (
-        "ag8001" in code_upper or
-        "ag8002" in code_upper or
-        "ag8003" in code_upper or
+        "ag8001" in code_lower or
+        "ag8002" in code_lower or
+        "ag8003" in code_lower or
         "token expired" in raw_lower or
         "invalid token" in raw_lower or
         "session expired" in raw_lower or
@@ -278,7 +322,7 @@ def diagnose_rejection(
     # FACTOR 5: Freeze Quantity Limits (AB1005, Exchange Max Quantity)
     # =====================================================================
     elif (
-        "ab1005" in code_upper or
+        "ab1005" in code_lower or
         "freeze" in raw_lower or
         "freeze limit" in raw_lower or
         "exceeded max quantity" in raw_lower or
@@ -310,8 +354,8 @@ def diagnose_rejection(
     # FACTOR 1: Margin & Collateral Shortfall (AB1004, AB1007, Insufficient Funds)
     # =====================================================================
     elif (
-        "ab1004" in code_upper or
-        "ab1007" in code_upper or
+        "ab1004" in code_lower or
+        "ab1007" in code_lower or
         "insufficient funds" in raw_lower or
         "margin shortfall" in raw_lower or
         "insufficient margin" in raw_lower or
@@ -338,8 +382,8 @@ def diagnose_rejection(
     # FACTOR 3: Price Band & LPP Violations (AB1010, AB1011, Circuit limits)
     # =====================================================================
     elif (
-        "ab1010" in code_upper or
-        "ab1011" in code_upper or
+        "ab1010" in code_lower or
+        "ab1011" in code_lower or
         "circuit" in raw_lower or
         "lpp" in raw_lower or
         "price band" in raw_lower or
@@ -365,9 +409,9 @@ def diagnose_rejection(
     # FACTOR 4: Segment or Script Restrictions (AB1001, AB1008, AB1014, GSM/ASM)
     # =====================================================================
     elif (
-        "ab1001" in code_upper or
-        "ab1008" in code_upper or
-        "ab1014" in code_upper or
+        "ab1001" in code_lower or
+        "ab1008" in code_lower or
+        "ab1014" in code_lower or
         "segment" in raw_lower or
         "asm" in raw_lower or
         "gsm" in raw_lower or
@@ -399,8 +443,8 @@ def diagnose_rejection(
     # FACTOR 2: RMS Risk Rules & OI Limits (AB2001, AB2006, RMS Blocked)
     # =====================================================================
     elif (
-        "ab2001" in code_upper or
-        "ab2006" in code_upper or
+        "ab2001" in code_lower or
+        "ab2006" in code_lower or
         "rms" in raw_lower or
         "oi limit" in raw_lower or
         "open interest" in raw_lower or

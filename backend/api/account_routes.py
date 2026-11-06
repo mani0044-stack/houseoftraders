@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List, Optional
+from typing import Optional
 import logging
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -7,7 +7,13 @@ from backend.database.session import get_db
 from backend.database.models import TradingAccountModel
 from backend.security.encryption import vault
 from backend.broker.angel_session import session_manager
-from backend.config import redact_secrets
+from backend.broker.proxy_config import (
+  account_proxy_config,
+  normalize_proxy_url,
+  probe_proxy_egress,
+  static_ip_for,
+)
+from backend.config import redact_secrets, settings
 
 logger = logging.getLogger("algotrade")
 
@@ -21,6 +27,97 @@ class AccountCreatePayload(BaseModel):
   apiSecret: str = ""
   pin: str = ""
   totpSecret: str = ""
+  # Per-account static-IP egress. The proxy URL is never echoed back to the UI.
+  proxyUrl: Optional[str] = None
+  staticIp: Optional[str] = None
+  clearProxy: bool = False
+
+
+def _decrypted_proxy_url(acc: TradingAccountModel) -> str:
+  encrypted = getattr(acc, "encrypted_proxy_url", None)
+  return vault.decrypt(encrypted) if encrypted else ""
+
+
+def _proxy_fields(acc: TradingAccountModel) -> dict:
+  """Credential-free static-IP/proxy facts for API responses."""
+  proxy_url = _decrypted_proxy_url(acc)
+  static_ip = getattr(acc, "static_ip", "") or ""
+  config = account_proxy_config(proxy_url, static_ip)
+  return {
+    "proxyConfigured": bool(proxy_url),
+    "proxyHost": config["proxyHost"] or None,
+    "staticIp": static_ip or None,
+    "egressIp": config["staticIp"] or None,
+    "proxySource": config["source"],
+  }
+
+
+def _serialize_account(acc: TradingAccountModel, auth_message: Optional[str] = None) -> dict:
+  data = {
+    "id": acc.id,
+    "name": acc.name,
+    "clientId": acc.client_id,
+    "broker": acc.broker,
+    "status": acc.status,
+    "availableMargin": acc.available_margin,
+    "usedMargin": acc.used_margin,
+    "totalCapital": acc.total_capital,
+    "todaysPnL": acc.todays_pnl,
+    "openPositionsCount": acc.open_positions_count,
+    "assignedAlgosCount": acc.assigned_algos_count,
+    "lastHeartbeat": acc.last_heartbeat,
+    "isEnabled": acc.is_enabled,
+    "apiKeyConfigured": bool(acc.encrypted_api_key),
+    "totpConfigured": bool(acc.encrypted_totp_secret),
+    "pinConfigured": bool(acc.encrypted_pin),
+  }
+  data.update(_proxy_fields(acc))
+  if auth_message is not None:
+    data["authMessage"] = auth_message
+  return data
+
+
+def _session_for(acc: TradingAccountModel):
+  """Return the account session wired to this account's own proxy."""
+  api_key = vault.decrypt(acc.encrypted_api_key) if acc.encrypted_api_key else ""
+  pin = vault.decrypt(acc.encrypted_pin) if acc.encrypted_pin else ""
+  totp_secret = vault.decrypt(acc.encrypted_totp_secret) if acc.encrypted_totp_secret else ""
+  return session_manager.get_or_create_session(
+    account_id=acc.id,
+    client_id=acc.client_id,
+    api_key=api_key,
+    pin=pin,
+    totp_secret=totp_secret,
+    proxy_url=_decrypted_proxy_url(acc),
+    static_ip=getattr(acc, "static_ip", "") or "",
+  )
+
+
+def _apply_proxy_payload(acc: TradingAccountModel, payload: AccountCreatePayload) -> None:
+  """
+  Persist per-account proxy settings.
+
+  Destructive only when explicitly requested: a blank proxyUrl keeps the
+  stored proxy unless ``clearProxy`` is true, so editing credentials never
+  silently drops a working static-IP configuration.
+  """
+  if payload.clearProxy:
+    acc.encrypted_proxy_url = None
+    if payload.staticIp is not None:
+      acc.static_ip = (payload.staticIp or "").strip()
+    return
+
+  if payload.proxyUrl:
+    proxy_url = normalize_proxy_url(payload.proxyUrl)
+    acc.encrypted_proxy_url = vault.encrypt(proxy_url)
+    # Derive the whitelisted IP from the proxy host when it is not supplied
+    # separately (TrueIP-style proxies expose the static IP as the host).
+    acc.static_ip = (payload.staticIp or "").strip() or static_ip_for(proxy_url)
+    return
+
+  if payload.staticIp is not None:
+    acc.static_ip = (payload.staticIp or "").strip()
+
 
 @router.get("")
 def get_accounts(db: Session = Depends(get_db)):
@@ -35,56 +132,42 @@ def get_accounts(db: Session = Depends(get_db)):
     status = acc.status
 
     if acc.is_enabled and acc.encrypted_api_key:
-      api_key = vault.decrypt(acc.encrypted_api_key) if acc.encrypted_api_key else ""
-      pin = vault.decrypt(acc.encrypted_pin) if acc.encrypted_pin else ""
-      totp_secret = vault.decrypt(acc.encrypted_totp_secret) if acc.encrypted_totp_secret else ""
-      
-      session = session_manager.get_or_create_session(
-        account_id=acc.id,
-        client_id=acc.client_id,
-        api_key=api_key,
-        pin=pin,
-        totp_secret=totp_secret
-      )
-      
-      if session.status == "CONNECTED":
-        rms = session.fetch_rms_limits()
-        if rms.get("available_margin", 0.0) > 0:
-          available_margin = rms["available_margin"]
-          used_margin = rms["used_margin"]
-          total_capital = rms["total_capital"]
-          status = "Connected"
+      try:
+        session = _session_for(acc)
+        if session.status == "CONNECTED":
+          rms = session.fetch_rms_limits()
+          if rms.get("available_margin", 0.0) > 0:
+            available_margin = rms["available_margin"]
+            used_margin = rms["used_margin"]
+            total_capital = rms["total_capital"]
+            status = "Connected"
+      except Exception as exc:
+        logger.warning(
+          "Could not refresh live margin for %s: %s", acc.id, redact_secrets(str(exc))
+        )
 
-    result.append({
-      "id": acc.id,
-      "name": acc.name,
-      "clientId": acc.client_id,
-      "broker": acc.broker,
-      "status": status,
+    data = _serialize_account(acc)
+    data.update({
       "availableMargin": available_margin,
       "usedMargin": used_margin,
       "totalCapital": total_capital,
-      "todaysPnL": acc.todays_pnl,
-      "openPositionsCount": acc.open_positions_count,
-      "assignedAlgosCount": acc.assigned_algos_count,
-      "lastHeartbeat": acc.last_heartbeat,
-      "isEnabled": acc.is_enabled,
-      "apiKeyConfigured": bool(acc.encrypted_api_key),
-      "totpConfigured": bool(acc.encrypted_totp_secret),
-      "pinConfigured": bool(acc.encrypted_pin)
+      "status": status,
     })
+    result.append(data)
   return result
+
 
 @router.get("/proxy-status")
 def get_proxy_status(verify: bool = False):
   """
-  Report whether Angel One traffic uses a static-IP egress proxy (no secrets).
+  Report whether Angel One traffic uses the server-wide static-IP egress proxy.
 
+  Per-account egress is reported by GET /accounts/{account_id}/proxy-status.
   Pass ?verify=true to make a real proxied request and confirm the observed
-  egress IP matches ANGEL_STATIC_IP.
+  egress IP matches ANGEL_STATIC_IP. Never returns proxy credentials.
   """
-  from backend.config import settings
   status = {
+    "source": "server" if settings.angel_proxy_enabled else "direct",
     "enabled": settings.angel_proxy_enabled,
     "staticIp": settings.angel_static_ip or None,
     "proxyHost": settings.angel_proxy_host or None,
@@ -92,6 +175,29 @@ def get_proxy_status(verify: bool = False):
   if verify:
     status["egress"] = settings.probe_angel_egress()
   return status
+
+
+@router.get("/{account_id}/proxy-status")
+def get_account_proxy_status(
+  account_id: str, verify: bool = False, db: Session = Depends(get_db)
+):
+  """Report and optionally verify one account's own static-IP egress."""
+  acc = db.query(TradingAccountModel).filter(TradingAccountModel.id == account_id).first()
+  if not acc:
+    raise HTTPException(status_code=404, detail="Account not found")
+
+  config = account_proxy_config(_decrypted_proxy_url(acc), getattr(acc, "static_ip", "") or "")
+  status = {
+    "accountId": acc.id,
+    "source": config["source"],
+    "enabled": config["enabled"],
+    "staticIp": config["staticIp"] or None,
+    "proxyHost": config["proxyHost"] or None,
+  }
+  if verify:
+    status["egress"] = probe_proxy_egress(config["proxies"], config["staticIp"])
+  return status
+
 
 @router.post("")
 def add_account(payload: AccountCreatePayload, db: Session = Depends(get_db)):
@@ -108,6 +214,7 @@ def add_account(payload: AccountCreatePayload, db: Session = Depends(get_db)):
     existing_acc.encrypted_pin = vault.encrypt(payload.pin)
     existing_acc.encrypted_totp_secret = vault.encrypt(payload.totpSecret)
     existing_acc.is_enabled = True
+    _apply_proxy_payload(existing_acc, payload)
     new_acc = existing_acc
   else:
     new_acc = TradingAccountModel(
@@ -128,19 +235,14 @@ def add_account(payload: AccountCreatePayload, db: Session = Depends(get_db)):
       encrypted_pin=vault.encrypt(payload.pin),
       encrypted_totp_secret=vault.encrypt(payload.totpSecret)
     )
+    _apply_proxy_payload(new_acc, payload)
     db.add(new_acc)
 
   db.commit()
   db.refresh(new_acc)
 
-  # Test & initialize session immediately
-  session = session_manager.get_or_create_session(
-    account_id=new_acc.id,
-    client_id=client_id_raw,
-    api_key=payload.apiKey,
-    pin=payload.pin,
-    totp_secret=payload.totpSecret
-  )
+  # Test & initialize session immediately with this account's own proxy.
+  session = _session_for(new_acc)
 
   success, msg = session.authenticate()
   if success:
@@ -151,29 +253,11 @@ def add_account(payload: AccountCreatePayload, db: Session = Depends(get_db)):
     new_acc.total_capital = rms.get("total_capital", 0.0)
     db.commit()
     db.refresh(new_acc)
-    return {
-      "id": new_acc.id,
-      "name": new_acc.name,
-      "clientId": new_acc.client_id,
-      "broker": new_acc.broker,
-      "status": new_acc.status,
-      "availableMargin": new_acc.available_margin,
-      "usedMargin": new_acc.used_margin,
-      "totalCapital": new_acc.total_capital,
-      "todaysPnL": new_acc.todays_pnl,
-      "openPositionsCount": new_acc.open_positions_count,
-      "assignedAlgosCount": new_acc.assigned_algos_count,
-      "lastHeartbeat": new_acc.last_heartbeat,
-      "isEnabled": new_acc.is_enabled,
-      "apiKeyConfigured": bool(new_acc.encrypted_api_key),
-      "totpConfigured": bool(new_acc.encrypted_totp_secret),
-      "pinConfigured": bool(new_acc.encrypted_pin),
-      "authMessage": msg
-    }
-  else:
-    new_acc.status = "Authentication_Required"
-    db.commit()
-    raise HTTPException(status_code=400, detail=msg)
+    return _serialize_account(new_acc, auth_message=msg)
+
+  new_acc.status = "Authentication_Required"
+  db.commit()
+  raise HTTPException(status_code=400, detail=msg)
 
 @router.patch("/{account_id}")
 def update_account_status(account_id: str, isEnabled: bool, db: Session = Depends(get_db)):
@@ -199,20 +283,12 @@ def update_account_credentials(account_id: str, payload: AccountCreatePayload, d
   if payload.totpSecret:
     acc.encrypted_totp_secret = vault.encrypt(payload.totpSecret)
 
+  _apply_proxy_payload(acc, payload)
+
   db.commit()
   db.refresh(acc)
 
-  api_key = vault.decrypt(acc.encrypted_api_key) if acc.encrypted_api_key else ""
-  pin = vault.decrypt(acc.encrypted_pin) if acc.encrypted_pin else ""
-  totp_secret = vault.decrypt(acc.encrypted_totp_secret) if acc.encrypted_totp_secret else ""
-
-  session = session_manager.get_or_create_session(
-    account_id=acc.id,
-    client_id=acc.client_id,
-    api_key=api_key,
-    pin=pin,
-    totp_secret=totp_secret
-  )
+  session = _session_for(acc)
 
   success, msg = session.authenticate()
   if success:
@@ -223,29 +299,11 @@ def update_account_credentials(account_id: str, payload: AccountCreatePayload, d
     acc.total_capital = rms.get("total_capital", 0.0)
   else:
     acc.status = "Authentication_Required"
-  
+
   db.commit()
   db.refresh(acc)
 
-  return {
-    "id": acc.id,
-    "name": acc.name,
-    "clientId": acc.client_id,
-    "broker": acc.broker,
-    "status": acc.status,
-    "availableMargin": acc.available_margin,
-    "usedMargin": acc.used_margin,
-    "totalCapital": acc.total_capital,
-    "todaysPnL": acc.todays_pnl,
-    "openPositionsCount": acc.open_positions_count,
-    "assignedAlgosCount": acc.assigned_algos_count,
-    "lastHeartbeat": acc.last_heartbeat,
-    "isEnabled": acc.is_enabled,
-    "apiKeyConfigured": bool(acc.encrypted_api_key),
-    "totpConfigured": bool(acc.encrypted_totp_secret),
-    "pinConfigured": bool(acc.encrypted_pin),
-    "authMessage": msg
-  }
+  return _serialize_account(acc, auth_message=msg)
 
 @router.post("/{account_id}/test-connection")
 def test_broker_connection(account_id: str, db: Session = Depends(get_db)):
@@ -279,20 +337,16 @@ def _test_broker_connection(account_id: str, db: Session):
   if not acc:
     raise HTTPException(status_code=404, detail="Account not found")
 
-  api_key = vault.decrypt(acc.encrypted_api_key) if acc.encrypted_api_key else ""
-  pin = vault.decrypt(acc.encrypted_pin) if acc.encrypted_pin else ""
-  totp_secret = vault.decrypt(acc.encrypted_totp_secret) if acc.encrypted_totp_secret else ""
-  client_id = acc.client_id
-
-  session = session_manager.get_or_create_session(
-    account_id=acc.id,
-    client_id=client_id,
-    api_key=api_key,
-    pin=pin,
-    totp_secret=totp_secret
-  )
-
+  session = _session_for(acc)
   success, msg = session.authenticate()
+
+  proxy_config = session.proxy_config
+  proxy_info = {
+    "source": proxy_config["source"],
+    "enabled": proxy_config["enabled"],
+    "proxyHost": proxy_config["proxyHost"] or None,
+    "staticIp": proxy_config["staticIp"] or None,
+  }
 
   if success:
     rms = session.fetch_rms_limits()
@@ -307,7 +361,8 @@ def _test_broker_connection(account_id: str, db: Session):
       "message": "Angel One SmartAPI Session Connected Successfully",
       "availableMargin": acc.available_margin,
       "totalCapital": acc.total_capital,
-      "lastAuthenticated": session.last_authenticated.isoformat() if session.last_authenticated else "Just now"
+      "lastAuthenticated": session.last_authenticated.isoformat() if session.last_authenticated else "Just now",
+      "proxy": proxy_info,
     }
   else:
     acc.status = "Authentication_Required"
@@ -315,7 +370,8 @@ def _test_broker_connection(account_id: str, db: Session):
     return {
       "success": False,
       "status": "Authentication_Required",
-      "message": msg
+      "message": msg,
+      "proxy": proxy_info,
     }
 
 @router.post("/{account_id}/sync")
@@ -324,17 +380,7 @@ def sync_account_margin(account_id: str, db: Session = Depends(get_db)):
   if not acc:
     raise HTTPException(status_code=404, detail="Account not found")
 
-  api_key = vault.decrypt(acc.encrypted_api_key) if acc.encrypted_api_key else ""
-  pin = vault.decrypt(acc.encrypted_pin) if acc.encrypted_pin else ""
-  totp_secret = vault.decrypt(acc.encrypted_totp_secret) if acc.encrypted_totp_secret else ""
-  
-  session = session_manager.get_or_create_session(
-    account_id=acc.id,
-    client_id=acc.client_id,
-    api_key=api_key,
-    pin=pin,
-    totp_secret=totp_secret
-  )
+  session = _session_for(acc)
 
   rms = session.fetch_rms_limits()
   acc.available_margin = rms.get("available_margin", acc.available_margin)
@@ -359,7 +405,3 @@ def delete_account(account_id: str, db: Session = Depends(get_db)):
     db.delete(acc)
     db.commit()
   return {"success": True, "account_id": account_id, "message": "Account deleted successfully"}
-
-
-
-

@@ -4,6 +4,7 @@ from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
 import backend.broker.patch_smartapi  # Apply SmartConnect read-only FS patch
 from backend.broker.patch_smartapi import enforce_static_ip_egress
+from backend.broker.proxy_config import account_proxy_config
 from SmartApi import SmartConnect
 from backend.config import settings
 from backend.engine.instrument_service import instrument_service
@@ -33,20 +34,61 @@ class AccountSession:
     client_id: str,
     api_key: str,
     pin: str,
-    totp_secret: str
+    totp_secret: str,
+    proxy_url: str = "",
+    static_ip: str = "",
   ):
     self.account_id = account_id
     self.client_id = client_id.strip()
     self.api_key = api_key.strip()
     self.pin = pin.strip()
     self.totp_secret = totp_secret.strip()
-    
+
+    # Per-account static-IP egress (falls back to server-wide settings).
+    self.proxy_url = (proxy_url or "").strip()
+    self.static_ip = (static_ip or "").strip()
+
     self.status: str = "DISCONNECTED" # CONNECTED, AUTHENTICATION_REQUIRED, DISCONNECTED
     self.jwt_token: Optional[str] = None
     self.feed_token: Optional[str] = None
     self.refresh_token: Optional[str] = None
     self.last_authenticated: Optional[datetime] = None
     self.smart_api: Optional[SmartConnect] = None
+
+  @property
+  def proxy_config(self) -> Dict[str, Any]:
+    """Effective proxy settings for this account (account -> server -> direct)."""
+    return account_proxy_config(self.proxy_url, self.static_ip)
+
+  @property
+  def proxies(self) -> Dict[str, str]:
+    return self.proxy_config["proxies"]
+
+  @property
+  def egress_ip(self) -> str:
+    return str(self.proxy_config["staticIp"] or "")
+
+  def _diagnostic_payload(self) -> Dict[str, Any]:
+    """Account-specific egress facts for rejection diagnostics."""
+    config = self.proxy_config
+    return {
+      "proxy_enabled": config["enabled"],
+      "static_ip": config["staticIp"],
+      "proxy_host": config["proxyHost"],
+      "proxy_source": config["source"],
+    }
+
+  def set_proxy_config(self, proxy_url: str = "", static_ip: str = "") -> None:
+    """Update this account's static-IP configuration and any live client."""
+    self.proxy_url = (proxy_url or "").strip()
+    self.static_ip = (static_ip or "").strip()
+    if self.smart_api is not None:
+      enforce_static_ip_egress(
+        self.smart_api,
+        proxies=self.proxies,
+        static_ip=self.egress_ip,
+        context=f"proxy update for {self.client_id}",
+      )
 
   def generate_totp(self) -> Tuple[str, str]:
     """Generate 6-digit TOTP code for automated Angel One 2FA authentication."""
@@ -97,11 +139,20 @@ class AccountSession:
       return False, msg
 
     try:
-      # Route authentication and all subsequent order traffic through the
-      # configured static-IP proxy (when enabled) so Angel One sees that IP.
+      # Route authentication and all subsequent order traffic through this
+      # account's static-IP proxy (falls back to server-wide settings).
+      proxy_config = self.proxy_config
       self.smart_api = SmartConnect(
         api_key=self.api_key,
-        proxies=settings.angel_proxies,
+        proxies=proxy_config["proxies"] or None,
+      )
+      # SmartConnect ignores clientPublicIP in its constructor, so pin the
+      # whitelisted egress IP immediately after construction.
+      enforce_static_ip_egress(
+        self.smart_api,
+        proxies=proxy_config["proxies"],
+        static_ip=proxy_config["staticIp"],
+        context=f"authentication for {self.client_id}",
       )
       auth_data = self.smart_api.generateSession(self.client_id, self.pin, totp_code)
 
@@ -124,10 +175,11 @@ class AccountSession:
       err_str = str(e)
       logger.error(f"Failed Angel One authentication exception for {self.client_id}: {err_str}")
       self.status = "AUTHENTICATION_REQUIRED"
-      if settings.angel_proxy_enabled:
+      proxy_config = self.proxy_config
+      if proxy_config["enabled"]:
         return False, (
           f"Angel One Connection Error via static-IP proxy "
-          f"{settings.angel_proxy_host or 'configured'}: {err_str}"
+          f"{proxy_config['proxyHost'] or 'configured'}: {err_str}"
         )
       return False, f"Angel One Connection Error: {err_str}"
 
@@ -221,7 +273,10 @@ class AccountSession:
     # before submission so a reused/stale session can never place an order from
     # the host's public IP.
     enforce_static_ip_egress(
-      self.smart_api, context=f"order placement for {self.client_id}"
+      self.smart_api,
+      proxies=self.proxies,
+      static_ip=self.egress_ip,
+      context=f"order placement for {self.client_id}",
     )
 
     master = get_scrip_master()
@@ -332,7 +387,7 @@ class AccountSession:
         else:
           # Check if session/token expired and auto-retry once
           from backend.broker.rejection_analyzer import diagnose_rejection
-          diag = diagnose_rejection(resp)
+          diag = diagnose_rejection(resp, self._diagnostic_payload())
           if diag.get("suggested_action") == "REAUTHENTICATE_SESSION":
             logger.info(f"Session token expired for {self.client_id}. Auto-reauthenticating via TOTP and retrying order...")
             auth_ok, auth_msg = self.authenticate()
@@ -343,7 +398,7 @@ class AccountSession:
               elif isinstance(retry_resp, dict) and (retry_resp.get("status") or retry_resp.get("success")):
                 order_id = retry_resp.get("data", {}).get("orderid") or retry_resp.get("orderid") or f"ANGEL-{datetime.utcnow().strftime('%H%M%S')}"
                 return {"success": True, "broker_order_id": order_id, "mode": "LIVE", "symbol": trading_symbol, "exchange": exchange_name}
-              diag = diagnose_rejection(retry_resp)
+              diag = diagnose_rejection(retry_resp, self._diagnostic_payload())
 
           err_msg = diag["raw_message"]
           logger.error(f"Order placement rejected by Angel One for {self.client_id} [{diag['factor']}]: {err_msg}")
@@ -355,7 +410,7 @@ class AccountSession:
           }
       else:
         from backend.broker.rejection_analyzer import diagnose_rejection
-        diag = diagnose_rejection(resp)
+        diag = diagnose_rejection(resp, self._diagnostic_payload())
         return {
           "success": False,
           "error": diag["raw_message"],
@@ -366,7 +421,7 @@ class AccountSession:
       err_str = str(e)
       logger.error(f"SmartAPI placeOrder exception for account {self.client_id}: {err_str}")
       from backend.broker.rejection_analyzer import diagnose_rejection
-      diag = diagnose_rejection(err_str)
+      diag = diagnose_rejection(err_str, self._diagnostic_payload())
       return {
         "success": False,
         "error": err_str,
@@ -382,7 +437,10 @@ class AccountSession:
       return {"success": False, "error": "SmartAPI session not connected"}
 
     enforce_static_ip_egress(
-      self.smart_api, context=f"order cancellation for {self.client_id}"
+      self.smart_api,
+      proxies=self.proxies,
+      static_ip=self.egress_ip,
+      context=f"order cancellation for {self.client_id}",
     )
 
     try:
@@ -400,26 +458,99 @@ class SessionManager:
   def __init__(self):
     self.sessions: Dict[str, AccountSession] = {}
 
+  @staticmethod
+  def _load_account_proxy(account_id: str) -> Tuple[str, str]:
+    """
+    Read an account's stored proxy URL / static IP from the database.
+
+    Used when a session is created by a code path that does not have the full
+    account record (order routing, background strategy runner, ...). Failures
+    fall back to server-wide settings instead of blocking the session.
+    """
+    try:
+      from backend.database.session import SessionLocal
+      from backend.database.models import TradingAccountModel
+      from backend.security.encryption import vault
+
+      db = SessionLocal()
+      try:
+        acc = (
+          db.query(TradingAccountModel)
+          .filter(TradingAccountModel.id == account_id)
+          .first()
+        )
+        if not acc:
+          return "", ""
+        proxy_url = (
+          vault.decrypt(acc.encrypted_proxy_url)
+          if getattr(acc, "encrypted_proxy_url", None)
+          else ""
+        )
+        return proxy_url or "", getattr(acc, "static_ip", "") or ""
+      finally:
+        db.close()
+    except Exception as exc:
+      logger.warning(
+        "Could not load proxy configuration for account %s: %s: %s",
+        account_id,
+        type(exc).__name__,
+        exc,
+      )
+      return "", ""
+
   def get_or_create_session(
     self,
     account_id: str,
     client_id: str = "",
     api_key: str = "",
     pin: str = "",
-    totp_secret: str = ""
+    totp_secret: str = "",
+    proxy_url: Optional[str] = None,
+    static_ip: Optional[str] = None,
   ) -> AccountSession:
     if account_id not in self.sessions:
+      # Explicit values win; otherwise load this account's own proxy from the
+      # database so every entry point honours per-account static IPs.
+      if proxy_url is None or static_ip is None:
+        stored_proxy, stored_ip = self._load_account_proxy(account_id)
+        if proxy_url is None:
+          proxy_url = stored_proxy
+        if static_ip is None:
+          static_ip = stored_ip
+
       self.sessions[account_id] = AccountSession(
-        account_id, client_id, api_key, pin, totp_secret
+        account_id,
+        client_id,
+        api_key,
+        pin,
+        totp_secret,
+        proxy_url=proxy_url or "",
+        static_ip=static_ip or "",
       )
-    else:
-      session = self.sessions[account_id]
-      # Update credentials if changed
-      if client_id: session.client_id = client_id.strip()
-      if api_key: session.api_key = api_key.strip()
-      if pin: session.pin = pin.strip()
-      if totp_secret: session.totp_secret = totp_secret.strip()
-    return self.sessions[account_id]
+      return self.sessions[account_id]
+
+    session = self.sessions[account_id]
+    # Update credentials if changed
+    if client_id:
+      session.client_id = client_id.strip()
+    if api_key:
+      session.api_key = api_key.strip()
+    if pin:
+      session.pin = pin.strip()
+    if totp_secret:
+      session.totp_secret = totp_secret.strip()
+
+    # Refresh the egress configuration when the caller supplies new values.
+    if proxy_url is not None or static_ip is not None:
+      next_proxy = session.proxy_url if proxy_url is None else proxy_url
+      next_ip = session.static_ip if static_ip is None else static_ip
+      if (
+        (next_proxy or "").strip() != session.proxy_url
+        or (next_ip or "").strip() != session.static_ip
+      ):
+        session.set_proxy_config(next_proxy, next_ip)
+
+    return session
 
   def get_session(self, account_id: str) -> Optional[AccountSession]:
     return self.sessions.get(account_id)

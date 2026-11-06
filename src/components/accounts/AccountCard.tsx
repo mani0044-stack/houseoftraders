@@ -123,6 +123,29 @@ export const AccountCard: React.FC<AccountCardProps> = ({ account, onViewDetails
             <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-sans font-medium bg-blue-50 text-blue-700 border border-blue-200/80">
               <Lock className="w-3 h-3 text-blue-600" /> PIN: Configured
             </div>
+            {account.egressIp || account.staticIp ? (
+              <div
+                className="flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-sans font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/80"
+                title={
+                  account.proxyConfigured
+                    ? `Account proxy ${account.proxyHost || ''}`
+                    : account.proxySource === 'server'
+                      ? 'Server-wide static-IP proxy'
+                      : 'Static IP configured'
+                }
+              >
+                <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                Static IP: <span className="font-mono-num font-bold">{account.egressIp || account.staticIp}</span>
+                {account.proxyConfigured ? ' (account)' : account.proxySource === 'server' ? ' (server)' : ''}
+              </div>
+            ) : (
+              <div
+                className="flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-sans font-medium bg-amber-50 text-amber-700 border border-amber-200/80"
+                title="Orders will egress directly unless a proxy is configured"
+              >
+                <AlertTriangle className="w-3 h-3 text-amber-600" /> Static IP: Not set
+              </div>
+            )}
           </div>
 
           {/* Financial Metrics Grid */}

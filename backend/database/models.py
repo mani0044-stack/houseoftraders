@@ -35,6 +35,12 @@ class TradingAccountModel(Base):
   encrypted_pin = Column(String, nullable=True)
   encrypted_totp_secret = Column(String, nullable=True)
 
+  # Per-account static-IP egress. The proxy URL holds credentials, so it is
+  # encrypted at rest; the static IP itself is not sensitive and is stored
+  # plain so it can be shown in the UI.
+  encrypted_proxy_url = Column(String, nullable=True)
+  static_ip = Column(String, nullable=True)
+
   created_at = Column(DateTime, default=datetime.utcnow)
 
 class AlgorithmModel(Base):

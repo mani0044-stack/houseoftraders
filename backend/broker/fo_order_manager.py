@@ -17,6 +17,7 @@ from typing import Dict, Any, Optional, Tuple, Union
 
 import backend.broker.patch_smartapi  # Apply SmartConnect placeOrder and IP patches
 from backend.broker.patch_smartapi import enforce_static_ip_egress
+from backend.broker.proxy_config import account_proxy_config
 from backend.broker.rejection_analyzer import diagnose_rejection, pre_validate_order, calculate_order_slices
 
 logger = logging.getLogger(__name__)
@@ -502,7 +503,9 @@ class AngelScripMaster:
 def place_fo_order(
     ui_payload: Dict[str, Any],
     smart_connect_instance: Any,
-    scrip_master: Optional[AngelScripMaster] = None
+    scrip_master: Optional[AngelScripMaster] = None,
+    proxies: Optional[Dict[str, str]] = None,
+    static_ip: str = "",
 ) -> Dict[str, Any]:
     """
     Parses, validates, maps, and executes Futures & Options orders via Angel One SmartAPI.
@@ -511,12 +514,22 @@ def place_fo_order(
         ui_payload (dict): UI input payload dictionary.
         smart_connect_instance (SmartConnect): Active authenticated SmartAPI session object.
         scrip_master (AngelScripMaster, optional): Instance of scrip master lookup service.
+        proxies (dict, optional): This account's static-IP proxy mapping. When
+            omitted the server-wide ANGEL_PROXY_URL is used.
+        static_ip (str, optional): This account's whitelisted egress IP.
 
     Returns:
         dict: Standardized outcome dictionary:
               Success: {"status": "SUCCESS", "order_id": "...", "message": "...", "data": {...}}
               Failure: {"status": "FAILED", "error": "Detailed error string..."}
     """
+    # Account-specific egress facts for IP-whitelist diagnostics.
+    ui_payload = ui_payload or {}
+    diagnostic_payload = dict(ui_payload)
+    diagnostic_payload["proxy_enabled"] = bool(proxies) or bool(static_ip)
+    if static_ip:
+        diagnostic_payload["static_ip"] = static_ip
+
     try:
         if not smart_connect_instance:
             return {
@@ -735,7 +748,12 @@ def place_fo_order(
         # 8. Execute Order via SmartConnect instance inside Try-Except block
         #    Re-apply the static-IP proxy immediately before transmission so the
         #    order always exits from the whitelisted egress IP.
-        enforce_static_ip_egress(smart_connect_instance, context="F&O order placement")
+        enforce_static_ip_egress(
+            smart_connect_instance,
+            proxies=proxies,
+            static_ip=static_ip,
+            context="F&O order placement",
+        )
         res = smart_connect_instance.placeOrder(order_params)
 
         # Inspect Angel One SmartAPI Response Payload
@@ -772,7 +790,7 @@ def place_fo_order(
             }
         else:
             # Diagnose rejection against all 6 critical factors
-            diagnosed = diagnose_rejection(res, ui_payload)
+            diagnosed = diagnose_rejection(res, diagnostic_payload)
             logger.error(
                 f"Angel One Order Placement Rejected [{diagnosed['factor']} / {diagnosed['error_code']}]: "
                 f"{diagnosed['raw_message']}"
@@ -797,7 +815,7 @@ def place_fo_order(
     except Exception as e:
         err_msg = str(e)
         logger.exception(f"Exception during F&O order placement: {err_msg}")
-        diagnosed = diagnose_rejection(err_msg, ui_payload)
+        diagnosed = diagnose_rejection(err_msg, diagnostic_payload)
         return {
             "status": "FAILED",
             "error": diagnosed["raw_message"],
@@ -838,7 +856,9 @@ def authenticate_angel_session(
     api_key: str,
     client_id: str,
     pin: str,
-    totp_secret: str
+    totp_secret: str,
+    proxy_url: str = "",
+    static_ip: str = "",
 ) -> Tuple[Any, Dict[str, Any]]:
     """
     Authenticates with Angel One SmartAPI using TOTP 2FA.
@@ -849,16 +869,27 @@ def authenticate_angel_session(
         2. Daily 2FA (TOTP) authentication is mandatory for API session generation.
         3. Never commit raw API credentials or TOTP secrets to source code.
 
+    ``proxy_url``/``static_ip`` are the account-specific static-IP egress
+    settings. When omitted, the server-wide ANGEL_PROXY_URL is used.
+
     Returns:
         Tuple of (smart_connect_instance, session_data_dict)
     """
     from SmartApi import SmartConnect
-    from backend.config import settings
 
+    proxy_config = account_proxy_config(proxy_url, static_ip)
     totp_code = generate_totp_code(totp_secret)
     smart_api = SmartConnect(
         api_key=api_key,
-        proxies=settings.angel_proxies,
+        proxies=proxy_config["proxies"] or None,
+    )
+    # SmartConnect ignores clientPublicIP in its constructor; pin the account's
+    # whitelisted egress IP immediately after construction.
+    enforce_static_ip_egress(
+        smart_api,
+        proxies=proxy_config["proxies"],
+        static_ip=proxy_config["staticIp"],
+        context=f"F&O authentication for {client_id}",
     )
 
     session_res = smart_api.generateSession(client_id, pin, totp_code)

@@ -38,6 +38,8 @@ else:
 # platform would return a bodyless HTTP 500, hiding the real cause.
 try:
     Base.metadata.create_all(bind=engine)
+    from backend.database.migrations import ensure_schema
+    ensure_schema(engine)
     logger.info("Database schema verified.")
 except Exception as exc:
     logger.error(

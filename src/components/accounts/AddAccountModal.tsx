@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Lock, ShieldCheck, RefreshCw, HelpCircle } from 'lucide-react';
+import { X, Lock, ShieldCheck, RefreshCw, HelpCircle, Globe } from 'lucide-react';
 import { useUIStore } from '../../store/useUIStore';
 import { useTradingStore } from '../../store/useTradingStore';
 import { BrokerName } from '../../types/account';
@@ -19,6 +19,9 @@ export const AddAccountModal: React.FC = () => {
   const [apiSecret, setApiSecret] = useState<string>('');
   const [pin, setPin] = useState<string>('');
   const [totpSecret, setTotpSecret] = useState<string>('');
+  const [proxyUrl, setProxyUrl] = useState<string>('');
+  const [staticIp, setStaticIp] = useState<string>('');
+  const [clearProxy, setClearProxy] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   useEffect(() => {
@@ -26,11 +29,16 @@ export const AddAccountModal: React.FC = () => {
       setName(editingAccount.name || '');
       setBroker((editingAccount.broker as BrokerName) || 'Angel One');
       setClientId(editingAccount.clientId || '');
+      setStaticIp(editingAccount.staticIp || '');
     } else {
       setName('');
       setBroker('Angel One');
       setClientId('');
+      setStaticIp('');
     }
+    // The stored proxy URL is a secret and is never sent back to the browser.
+    setProxyUrl('');
+    setClearProxy(false);
     setApiKey('');
     setApiSecret('');
     setPin('');
@@ -57,7 +65,10 @@ export const AddAccountModal: React.FC = () => {
         apiKey,
         apiSecret,
         pin,
-        totpSecret
+        totpSecret,
+        staticIp: staticIp.trim(),
+        ...(proxyUrl.trim() ? { proxyUrl: proxyUrl.trim() } : {}),
+        ...(clearProxy ? { clearProxy: true } : {}),
       };
 
       const result = isEditMode
@@ -191,6 +202,68 @@ export const AddAccountModal: React.FC = () => {
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono-num focus:outline-none focus:border-blue-600"
               />
             </div>
+          </div>
+
+          {/* Per-account static IP / proxy egress */}
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start gap-2">
+                <Globe className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold text-slate-800">Static IP / Proxy for this account</p>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Each account can use its own whitelisted static IP. Blank fields fall back to the server-wide proxy.
+                  </p>
+                </div>
+              </div>
+              {isEditMode && editingAccount?.proxyConfigured && (
+                <label className="flex items-center gap-1.5 text-[10px] font-semibold text-rose-700 shrink-0 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={clearProxy}
+                    onChange={(e) => setClearProxy(e.target.checked)}
+                    className="accent-rose-600"
+                  />
+                  Remove proxy
+                </label>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Whitelisted Static IP</label>
+                <input
+                  type="text"
+                  value={staticIp}
+                  onChange={(e) => setStaticIp(e.target.value)}
+                  placeholder="e.g. 109.121.47.141"
+                  disabled={clearProxy}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono-num focus:outline-none focus:border-blue-600 disabled:bg-slate-100 disabled:text-slate-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs uppercase text-slate-500 font-bold mb-1 tracking-wider">Static-IP Proxy URL</label>
+                <input
+                  type="password"
+                  value={proxyUrl}
+                  onChange={(e) => setProxyUrl(e.target.value)}
+                  placeholder={
+                    isEditMode
+                      ? editingAccount?.proxyConfigured
+                        ? 'Leave blank to keep current'
+                        : 'http://user:pass@host:port'
+                      : 'http://user:pass@host:port'
+                  }
+                  disabled={clearProxy}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono-num focus:outline-none focus:border-blue-600 disabled:bg-slate-100 disabled:text-slate-400"
+                />
+              </div>
+            </div>
+
+            <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
+              Egress priority: this account&apos;s proxy → server-wide proxy → direct. When only the proxy URL is given, the static IP is derived from its host. Proxy credentials are vault-encrypted and never shown again.
+            </p>
           </div>
 
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-600 flex items-start gap-2">

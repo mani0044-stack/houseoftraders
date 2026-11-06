@@ -2,9 +2,11 @@ import os
 import tempfile
 import logging
 import urllib.request
+from typing import Dict, Optional
 import logzero
 from SmartApi import SmartConnect
 from backend.config import settings
+from backend.broker.proxy_config import proxy_host
 
 logger = logging.getLogger(__name__)
 
@@ -13,8 +15,11 @@ logger = logging.getLogger(__name__)
 # =====================================================================
 _CACHED_PUBLIC_IP = None
 
-def get_real_public_ip() -> str:
+def get_real_public_ip(static_ip: str = "") -> str:
     global _CACHED_PUBLIC_IP
+    explicit = (static_ip or "").strip()
+    if explicit:
+        return explicit
     if _CACHED_PUBLIC_IP:
         return _CACHED_PUBLIC_IP
 
@@ -76,14 +81,17 @@ def _safe_smartconnect_init(self, *args, **kwargs):
         logzero.logfile = orig_logfile
 
     # Route every SmartAPI call through the configured static-IP proxy unless the
-    # caller supplied its own proxy mapping.
+    # caller supplied its own per-account proxy mapping.
     if not self.proxies:
         self.proxies = settings.angel_proxies or {}
 
-    # Override hardcoded default '106.193.147.98' with the egress IP Angel One sees.
-    real_ip = get_real_public_ip()
-    self.clientPublicIp = real_ip
-    self.clientPublicIP = real_ip
+    # Override hardcoded default '106.193.147.98' with the egress IP Angel One
+    # sees. Per-account egress IPs are applied immediately after construction by
+    # enforce_static_ip_egress(); this is the server-wide fallback.
+    if not getattr(self, "_static_ip", None):
+        real_ip = get_real_public_ip()
+        self.clientPublicIp = real_ip
+        self.clientPublicIP = real_ip
 
     if settings.angel_proxy_enabled:
         logger.info(
@@ -117,8 +125,8 @@ def _safe_smartconnect_place_order(self, orderparams):
             del params[k]
 
     try:
-        # Ensure latest public IP header
-        real_ip = get_real_public_ip()
+        # Ensure latest public IP header, preserving a per-account static IP.
+        real_ip = getattr(self, "_static_ip", "") or get_real_public_ip()
         self.clientPublicIp = real_ip
         self.clientPublicIP = real_ip
 
@@ -168,27 +176,50 @@ SmartConnect.placeOrder = _safe_smartconnect_place_order
 # =====================================================================
 # 4. Enforce static-IP egress at the moment an order is submitted
 # =====================================================================
-def enforce_static_ip_egress(client, context: str = "request") -> None:
+def enforce_static_ip_egress(
+    client,
+    proxies: Optional[Dict[str, str]] = None,
+    static_ip: str = "",
+    context: str = "request",
+) -> None:
     """
-    Force an existing SmartAPI client back onto the static-IP proxy.
+    Force a SmartAPI client onto the correct static-IP proxy and egress IP.
 
-    Sessions can be created before configuration is loaded (or reused after a
-    settings reload). SmartAPI reads ``self.proxies`` on every HTTP call, so
-    re-applying it here guarantees order traffic still exits from the
-    whitelisted static IP instead of the host's public IP.
+    ``proxies``/``static_ip`` are the per-account values; when omitted the
+    server-wide ANGEL_PROXY_URL / ANGEL_STATIC_IP configuration is used.
+    SmartAPI reads ``self.proxies`` on every HTTP call, so re-applying it here
+    guarantees order traffic still exits from the whitelisted static IP.
     """
-    if client is None or not settings.angel_proxy_enabled:
+    if client is None:
         return
 
-    proxies = settings.angel_proxies or {}
-    if getattr(client, "proxies", None) != proxies:
-        logger.warning(
-            "Re-applying static-IP proxy to SmartAPI client before %s", context
-        )
-        client.proxies = proxies
+    resolved_proxies = (
+        settings.angel_proxies or {}
+        if proxies is None
+        else {key: value for key, value in proxies.items() if value}
+    )
 
-    egress_ip = get_real_public_ip()
+    if resolved_proxies:
+        if getattr(client, "proxies", None) != resolved_proxies:
+            logger.warning(
+                "Re-applying static-IP proxy to SmartAPI client before %s", context
+            )
+            client.proxies = resolved_proxies
+    elif getattr(client, "proxies", None):
+        # The client was previously proxied but must now egress directly.
+        logger.warning(
+            "Removing static-IP proxy from SmartAPI client before %s", context
+        )
+        client.proxies = {}
+
+    egress_ip = (static_ip or "").strip()
+    if not egress_ip and resolved_proxies:
+        egress_ip = proxy_host(resolved_proxies.get("https", ""))
+    if not egress_ip:
+        egress_ip = get_real_public_ip()
+
     if egress_ip:
+        client._static_ip = egress_ip
         client.clientPublicIp = egress_ip
         client.clientPublicIP = egress_ip
 

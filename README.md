@@ -109,6 +109,27 @@ routes SmartAPI authentication and every order/data call through the configured 
 `ANGEL_STATIC_IP` is optional when the proxy host is itself the egress IP; it is then
 derived from `ANGEL_PROXY_URL`. Credentials are never written to logs or API responses.
 
+### Per-account static IP / proxy
+
+Each account can use its **own** proxy (own username/password/static IP) instead of
+the server-wide one. In **Accounts → Add / Edit Secrets**, fill:
+
+- **Whitelisted Static IP** — the IP registered in that account's SmartAPI app.
+- **Static-IP Proxy URL** — `http://username:password@static-ip:port`
+  (leave blank on edit to keep the stored proxy; tick **Remove proxy** to clear it).
+
+Egress priority is: **account proxy → `ANGEL_PROXY_URL` → direct**. The proxy URL is
+vault-encrypted in `trading_accounts.encrypted_proxy_url`; the UI/API only receive
+`proxyConfigured`, `proxyHost`, `staticIp`, `egressIp`, and `proxySource`. Verify one
+account without exposing credentials:
+
+```bash
+curl "http://localhost:8000/api/v1/accounts/<account-id>/proxy-status?verify=true"
+```
+
+`egress.observedIp` must equal that account's whitelisted static IP. New accounts are
+authenticated immediately after saving, through their own proxy.
+
 ### Debugging HTTP 500 / “Request failed with status code 500”
 
 That message is axios' generic text for an HTTP **500/503 with a non-JSON body** —

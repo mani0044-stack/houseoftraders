@@ -95,7 +95,7 @@ class Settings(BaseSettings):
 
   @property
   def angel_proxy_display(self) -> str:
-    """Credential-free proxy description safe for logs."""
+    """Credential-free proxy description safe for logs (no auth at all)."""
     url = self.ANGEL_PROXY_URL.strip()
     if not url:
       return "direct"
@@ -103,9 +103,7 @@ class Settings(BaseSettings):
       parsed = urlparse(url if "://" in url else f"http://{url}")
       host = parsed.hostname or "unknown"
       port = f":{parsed.port}" if parsed.port else ""
-      user = parsed.username
-      auth = f"{user}:***@" if user else ""
-      return f"{parsed.scheme or 'http'}://{auth}{host}{port}"
+      return f"{parsed.scheme or 'http'}://{host}{port}"
     except Exception:
       return "configured (unparseable)"
 
@@ -136,7 +134,7 @@ class Settings(BaseSettings):
       result["observedIp"] = observed or None
       result["matchesStaticIp"] = bool(observed and observed == self.angel_static_ip)
     except Exception as exc:
-      result["error"] = f"{type(exc).__name__}: {str(exc)[:200]}"
+      result["error"] = redact_secrets(f"{type(exc).__name__}: {str(exc)[:200]}")
     return result
 
   def apply_angel_proxy_env(self) -> None:
@@ -171,7 +169,7 @@ def redact_secrets(text: str) -> str:
   """
   if not text:
     return ""
-  redacted = re.sub(r"(://[^:/@\s]+:)[^@/\s]+@", r"\1***@", text)
+  redacted = re.sub(r"(://)[^/@\s]+@", r"\1***@", text)
   try:
     password = urlparse(settings.ANGEL_PROXY_URL).password
     if password and len(password) >= 4:

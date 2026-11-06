@@ -1,5 +1,6 @@
 export type BrokerName = 'Angel One' | 'Zerodha' | 'Dhan' | 'Fyers';
 export type ConnectionStatus = 'Connected' | 'Disconnected' | 'Connecting' | 'Error';
+export type ProxySource = 'account' | 'server' | 'account-static-ip' | 'direct';
 
 export interface TradingAccount {
   id: string;
@@ -18,6 +19,13 @@ export interface TradingAccount {
   apiKeyConfigured: boolean;
   totpConfigured: boolean;
   pinConfigured: boolean;
+  // Per-account static-IP egress (credentials are never exposed)
+  proxyConfigured?: boolean;
+  proxyHost?: string | null;
+  staticIp?: string | null;
+  egressIp?: string | null;
+  proxySource?: ProxySource;
+  authMessage?: string;
 }
 
 export interface AddAccountPayload {
@@ -28,4 +36,7 @@ export interface AddAccountPayload {
   apiSecret?: string;
   pin?: string;
   totpSecret?: string;
+  proxyUrl?: string;
+  staticIp?: string;
+  clearProxy?: boolean;
 }

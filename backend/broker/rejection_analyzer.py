@@ -243,10 +243,16 @@ def diagnose_rejection(
         additional_data["portal_url"] = "https://smartapi.angelbroking.com"
 
         from backend.config import settings
-        proxy_enabled = settings.angel_proxy_enabled
-        configured_static_ip = settings.angel_static_ip
+        proxy_enabled = bool(
+          ui_payload.get("proxy_enabled", settings.angel_proxy_enabled)
+        )
+        configured_static_ip = (
+          ui_payload.get("static_ip") or settings.angel_static_ip
+        )
+        proxy_host = ui_payload.get("proxy_host") or settings.angel_proxy_host
         additional_data["proxy_enabled"] = proxy_enabled
         additional_data["configured_static_ip"] = configured_static_ip or None
+        additional_data["proxy_host"] = proxy_host or None
 
         if proxy_enabled and configured_static_ip and detected_ip != configured_static_ip:
             # The proxy is configured but this request did not use it. This is the

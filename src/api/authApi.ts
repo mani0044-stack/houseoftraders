@@ -23,6 +23,14 @@ export const authApi = {
     return res.data;
   },
 
+  changePassword: async (currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> => {
+    const res = await axiosClient.post<{ success: boolean; message: string }>('/auth/change-password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+    return res.data;
+  },
+
   getMe: async (): Promise<UserProfile> => {
     const res = await axiosClient.get<UserProfile>('/auth/me');
     return res.data;

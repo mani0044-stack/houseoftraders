@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { Lock, Save, ShieldCheck, Bell, Wifi, Trash2, AlertTriangle } from 'lucide-react';
+import { Lock, Save, ShieldCheck, Bell, Wifi, Trash2, AlertTriangle, KeyRound, RefreshCw } from 'lucide-react';
 import { useUIStore } from '../store/useUIStore';
 import { useTradingStore } from '../store/useTradingStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { authApi } from '../api/authApi';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
 
 export const SettingsPage: React.FC = () => {
   const addToast = useUIStore((s) => s.addToast);
   const accounts = useTradingStore((s) => s.accounts);
   const algos = useTradingStore((s) => s.algos);
+  const user = useAuthStore((s) => s.user);
 
   const [backendUrl, setBackendUrl] = useState<string>(import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api');
   const [wsUrl, setWsUrl] = useState<string>(import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws');
@@ -15,8 +18,42 @@ export const SettingsPage: React.FC = () => {
   const [autoKillOnDisconnect, setAutoKillOnDisconnect] = useState<boolean>(true);
   const [defaultDailyLossCap, setDefaultDailyLossCap] = useState<number>(50000);
 
+  const [currentPassword, setCurrentPassword] = useState<string>('');
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState<boolean>(false);
+
   const [isResetAlgosModalOpen, setIsResetAlgosModalOpen] = useState<boolean>(false);
   const [isResetAccountsModalOpen, setIsResetAccountsModalOpen] = useState<boolean>(false);
+
+  const handleUpdatePassword = async () => {
+    if (!currentPassword) {
+      addToast('Error', 'Please enter your current password.', 'error');
+      return;
+    }
+    if (!newPassword || newPassword.length < 8) {
+      addToast('Error', 'New password must be at least 8 characters long.', 'error');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      addToast('Error', 'New password and confirm password do not match.', 'error');
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      await authApi.changePassword(currentPassword, newPassword);
+      addToast('Password Updated', 'Your password has been changed successfully in the database.', 'success');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || err.message || 'Failed to update password.';
+      addToast('Password Update Failed', msg, 'error');
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,6 +181,61 @@ export const SettingsPage: React.FC = () => {
               className="px-4 py-2 text-xs font-semibold bg-white text-rose-700 border border-rose-200 hover:bg-rose-600 hover:text-white rounded-lg transition-colors flex items-center gap-1.5 shadow-xs"
             >
               <Trash2 className="w-4 h-4" /> Delete All Accounts ({accounts.length})
+            </button>
+          </div>
+        </section>
+
+        {/* ACCOUNT CREDENTIALS & SECURITY */}
+        <section className="card-premium p-5 space-y-4">
+          <h3 className="text-xs uppercase font-bold text-slate-800 flex items-center gap-2 tracking-wider">
+            <KeyRound className="w-4 h-4 text-emerald-600" /> Account Security & Password
+          </h3>
+          <p className="text-xs text-slate-500">
+            Logged in as <strong className="text-slate-800 font-mono">{user?.email || 'Administrator'}</strong>. Change your password to any custom, strong password.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+            <div>
+              <label className="block text-slate-600 font-medium mb-1">Current Password</label>
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Current password"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-600 font-medium mb-1">New Password</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Min. 8 characters"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-600 font-medium mb-1">Confirm New Password</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm password"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white transition-all"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              type="button"
+              disabled={isUpdatingPassword || !currentPassword || !newPassword}
+              onClick={handleUpdatePassword}
+              className="px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-lg shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {isUpdatingPassword ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+              <span>Update Password</span>
             </button>
           </div>
         </section>

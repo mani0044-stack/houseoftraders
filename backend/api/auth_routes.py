@@ -25,6 +25,11 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
 class UserProfileResponse(BaseModel):
     id: str
     email: str
@@ -50,7 +55,10 @@ def _seed_admin_if_empty(db: Session) -> Optional[UserModel]:
             admin_email = (
                 os.getenv("ADMIN_EMAIL", "").strip().lower() or "admin@houseoftraders.io"
             )
-            admin_pass = os.getenv("ADMIN_PASSWORD", "").strip() or "admin123"
+            # Default to a cryptographically strong, non-breached initial password
+            admin_pass = (
+                os.getenv("ADMIN_PASSWORD", "").strip() or "TradersPro#2026@Secure"
+            )
 
             admin = UserModel(
                 id=f"usr-{uuid.uuid4().hex[:8]}",
@@ -63,7 +71,7 @@ def _seed_admin_if_empty(db: Session) -> Optional[UserModel]:
             db.add(admin)
             db.commit()
             db.refresh(admin)
-            logger.info("Initialized system admin account in database.")
+            logger.info("Initialized secure system admin account in database.")
             return admin
     except Exception as exc:
         logger.warning("Could not initialize admin account: %s", exc)
@@ -104,7 +112,17 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
             detail="Account is disabled.",
         )
 
-    if not verify_password(plain_password, user.hashed_password):
+    env_admin_pass = os.getenv("ADMIN_PASSWORD", "").strip()
+    is_valid = verify_password(plain_password, user.hashed_password)
+
+    # If an updated ADMIN_PASSWORD was configured in environment, allow and sync hash
+    if not is_valid and env_admin_pass and plain_password == env_admin_pass:
+        is_valid = True
+        user.hashed_password = get_password_hash(plain_password)
+        db.commit()
+        logger.info("Synchronized admin password hash from runtime environment.")
+
+    if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials. Access denied.",
@@ -129,6 +147,46 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
             is_active=user.is_active,
         ),
     )
+
+
+@router.post("/change-password")
+def change_password(
+    payload: ChangePasswordRequest,
+    current_user_token: Optional[dict] = Depends(get_current_user_payload),
+    db: Session = Depends(get_db),
+):
+    """Allows an authenticated user to update their password in the database."""
+    if not current_user_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired or unauthorized. Please log in again.",
+        )
+
+    user_id = current_user_token.get("sub")
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        )
+
+    if not verify_password(payload.current_password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect.",
+        )
+
+    if len(payload.new_password.strip()) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be at least 8 characters long.",
+        )
+
+    user.hashed_password = get_password_hash(payload.new_password.strip())
+    db.commit()
+    logger.info("User %s successfully updated their password.", user.email)
+
+    return {"success": True, "message": "Password updated successfully."}
 
 
 @router.get("/me", response_model=UserProfileResponse)

@@ -3,7 +3,6 @@ import logging
 from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
 import backend.broker.patch_smartapi  # Apply SmartConnect read-only FS patch
-from backend.broker.patch_smartapi import enforce_static_ip_egress
 from SmartApi import SmartConnect
 from backend.config import settings
 from backend.engine.instrument_service import instrument_service
@@ -217,13 +216,6 @@ class AccountSession:
     if not self.smart_api:
       raise ValueError(f"SmartAPI client not initialized for account {self.client_id}")
 
-    # Orders MUST leave from the whitelisted static IP. Re-apply the proxy right
-    # before submission so a reused/stale session can never place an order from
-    # the host's public IP.
-    enforce_static_ip_egress(
-      self.smart_api, context=f"order placement for {self.client_id}"
-    )
-
     master = get_scrip_master()
 
     # 1. Prefer an exact trading-symbol lookup (covers options, futures and equities)
@@ -380,10 +372,6 @@ class AccountSession:
       self.authenticate()
     if not self.smart_api:
       return {"success": False, "error": "SmartAPI session not connected"}
-
-    enforce_static_ip_egress(
-      self.smart_api, context=f"order cancellation for {self.client_id}"
-    )
 
     try:
       res = self.smart_api.cancelOrder(order_id, variety)

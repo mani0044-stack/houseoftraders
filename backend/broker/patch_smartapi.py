@@ -163,34 +163,4 @@ def _safe_smartconnect_place_order(self, orderparams):
         }
 
 SmartConnect.placeOrder = _safe_smartconnect_place_order
-
-
-# =====================================================================
-# 4. Enforce static-IP egress at the moment an order is submitted
-# =====================================================================
-def enforce_static_ip_egress(client, context: str = "request") -> None:
-    """
-    Force an existing SmartAPI client back onto the static-IP proxy.
-
-    Sessions can be created before configuration is loaded (or reused after a
-    settings reload). SmartAPI reads ``self.proxies`` on every HTTP call, so
-    re-applying it here guarantees order traffic still exits from the
-    whitelisted static IP instead of the host's public IP.
-    """
-    if client is None or not settings.angel_proxy_enabled:
-        return
-
-    proxies = settings.angel_proxies or {}
-    if getattr(client, "proxies", None) != proxies:
-        logger.warning(
-            "Re-applying static-IP proxy to SmartAPI client before %s", context
-        )
-        client.proxies = proxies
-
-    egress_ip = get_real_public_ip()
-    if egress_ip:
-        client.clientPublicIp = egress_ip
-        client.clientPublicIP = egress_ip
-
-
 logger.info("SmartConnect read-only FS, Public IP, and placeOrder patches applied successfully.")

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Lock, ShieldCheck, RefreshCw, HelpCircle, Globe } from 'lucide-react';
+import { X, Lock, ShieldCheck, RefreshCw, HelpCircle, Globe, AlertCircle } from 'lucide-react';
 import { useUIStore } from '../../store/useUIStore';
 import { useTradingStore } from '../../store/useTradingStore';
 import { BrokerName } from '../../types/account';
@@ -260,6 +260,16 @@ export const AddAccountModal: React.FC = () => {
                 />
               </div>
             </div>
+
+            {staticIp.trim() && !proxyUrl.trim() && !editingAccount?.proxyConfigured && (
+              <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200/80 text-[11px] text-amber-900 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Missing Proxy URL: </span>
+                  For cloud/Vercel deployments, orders will still exit from dynamic AWS IPs unless a <strong>Static-IP Proxy URL</strong> (<code>http://username:password@ip:port</code>) is provided so traffic actually tunnels through your static IP.
+                </div>
+              </div>
+            )}
 
             <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
               Egress priority: this account&apos;s proxy → server-wide proxy → direct. When only the proxy URL is given, the static IP is derived from its host. Proxy credentials are vault-encrypted and never shown again.

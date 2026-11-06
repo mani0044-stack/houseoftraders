@@ -526,9 +526,11 @@ def place_fo_order(
     # Account-specific egress facts for IP-whitelist diagnostics.
     ui_payload = ui_payload or {}
     diagnostic_payload = dict(ui_payload)
-    diagnostic_payload["proxy_enabled"] = bool(proxies) or bool(static_ip)
-    if static_ip:
-        diagnostic_payload["static_ip"] = static_ip
+    active_proxies = proxies if proxies is not None else getattr(smart_connect_instance, "proxies", None) or {}
+    active_static_ip = static_ip or getattr(smart_connect_instance, "_static_ip", "") or ""
+    diagnostic_payload["proxy_enabled"] = bool(active_proxies) or bool(active_static_ip)
+    if active_static_ip:
+        diagnostic_payload["static_ip"] = active_static_ip
 
     try:
         if not smart_connect_instance:

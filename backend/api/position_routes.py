@@ -46,8 +46,12 @@ def get_positions(db: Session = Depends(get_db)):
         api_key = vault.decrypt(acc.encrypted_api_key)
         pin = vault.decrypt(acc.encrypted_pin) if acc.encrypted_pin else ""
         totp_secret = vault.decrypt(acc.encrypted_totp_secret) if acc.encrypted_totp_secret else ""
+        proxy_url = vault.decrypt(acc.encrypted_proxy_url) if getattr(acc, "encrypted_proxy_url", None) else ""
+        static_ip = getattr(acc, "static_ip", "") or ""
         
-        session = session_manager.get_or_create_session(acc.id, acc.client_id, api_key, pin, totp_secret)
+        session = session_manager.get_or_create_session(
+          acc.id, acc.client_id, api_key, pin, totp_secret, proxy_url=proxy_url, static_ip=static_ip
+        )
         if session.status == "CONNECTED":
           live_pos = session.fetch_positions()
           for lp in live_pos:
@@ -93,8 +97,12 @@ def exit_position(position_id: str, db: Session = Depends(get_db)):
       api_key = vault.decrypt(acc.encrypted_api_key) if acc.encrypted_api_key else ""
       pin = vault.decrypt(acc.encrypted_pin) if acc.encrypted_pin else ""
       totp_secret = vault.decrypt(acc.encrypted_totp_secret) if acc.encrypted_totp_secret else ""
+      proxy_url = vault.decrypt(acc.encrypted_proxy_url) if getattr(acc, "encrypted_proxy_url", None) else ""
+      static_ip = getattr(acc, "static_ip", "") or ""
       
-      session = session_manager.get_or_create_session(acc.id, acc.client_id, api_key, pin, totp_secret)
+      session = session_manager.get_or_create_session(
+        acc.id, acc.client_id, api_key, pin, totp_secret, proxy_url=proxy_url, static_ip=static_ip
+      )
       exit_side = "SELL" if pos.quantity > 0 else "BUY"
       try:
         session.place_order(

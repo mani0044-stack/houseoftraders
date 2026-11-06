@@ -374,6 +374,13 @@ class AccountSession:
 
     logger.info(f"Transmitting order to Angel One SmartAPI ({self.client_id}): {order_params}")
 
+    enforce_static_ip_egress(
+      self.smart_api,
+      proxies=self.proxies,
+      static_ip=self.egress_ip,
+      context=f"order placement for {self.client_id}",
+    )
+
     try:
       resp = self.smart_api.placeOrder(order_params)
       logger.info(f"Angel One SmartAPI placeOrder response for {self.client_id}: {resp}")
@@ -540,7 +547,15 @@ class SessionManager:
     if totp_secret:
       session.totp_secret = totp_secret.strip()
 
-    # Refresh the egress configuration when the caller supplies new values.
+    # If caller didn't specify proxy but session has no proxy, try loading from DB
+    if proxy_url is None and not session.proxy_url:
+      stored_proxy, stored_ip = self._load_account_proxy(account_id)
+      if stored_proxy or stored_ip:
+        proxy_url = stored_proxy
+        if static_ip is None:
+          static_ip = stored_ip
+
+    # Refresh the egress configuration when new or stored values exist.
     if proxy_url is not None or static_ip is not None:
       next_proxy = session.proxy_url if proxy_url is None else proxy_url
       next_ip = session.static_ip if static_ip is None else static_ip

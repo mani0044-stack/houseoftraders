@@ -186,35 +186,36 @@ def enforce_static_ip_egress(
     Force a SmartAPI client onto the correct static-IP proxy and egress IP.
 
     ``proxies``/``static_ip`` are the per-account values; when omitted the
-    server-wide ANGEL_PROXY_URL / ANGEL_STATIC_IP configuration is used.
-    SmartAPI reads ``self.proxies`` on every HTTP call, so re-applying it here
-    guarantees order traffic still exits from the whitelisted static IP.
+    client's existing proxy or server-wide ANGEL_PROXY_URL / ANGEL_STATIC_IP
+    configuration is preserved. SmartAPI reads ``self.proxies`` on every HTTP call,
+    so ensuring it is set guarantees order traffic exits from the whitelisted static IP.
     """
     if client is None:
         return
 
-    resolved_proxies = (
-        settings.angel_proxies or {}
-        if proxies is None
-        else {key: value for key, value in proxies.items() if value}
-    )
-
-    if resolved_proxies:
-        if getattr(client, "proxies", None) != resolved_proxies:
+    if proxies is not None:
+        resolved_proxies = {key: value for key, value in proxies.items() if value}
+        if resolved_proxies:
+            if getattr(client, "proxies", None) != resolved_proxies:
+                logger.info(
+                    "Applying static-IP proxy to SmartAPI client before %s", context
+                )
+                client.proxies = resolved_proxies
+        elif getattr(client, "proxies", None):
             logger.warning(
-                "Re-applying static-IP proxy to SmartAPI client before %s", context
+                "Removing static-IP proxy from SmartAPI client before %s", context
             )
-            client.proxies = resolved_proxies
-    elif getattr(client, "proxies", None):
-        # The client was previously proxied but must now egress directly.
-        logger.warning(
-            "Removing static-IP proxy from SmartAPI client before %s", context
-        )
-        client.proxies = {}
+            client.proxies = {}
+    elif not getattr(client, "proxies", None) and settings.angel_proxies:
+        client.proxies = settings.angel_proxies
 
     egress_ip = (static_ip or "").strip()
-    if not egress_ip and resolved_proxies:
-        egress_ip = proxy_host(resolved_proxies.get("https", ""))
+    if not egress_ip and getattr(client, "_static_ip", None):
+        egress_ip = client._static_ip
+    if not egress_ip:
+        curr_proxies = getattr(client, "proxies", None) or {}
+        if curr_proxies:
+            egress_ip = proxy_host(curr_proxies.get("https", ""))
     if not egress_ip:
         egress_ip = get_real_public_ip()
 

@@ -275,19 +275,37 @@ def diagnose_rejection(
             )
             suggested_action = "CONFIGURE_STATIC_PROXY_ON_BACKEND"
         elif not proxy_enabled:
-            explanation = (
-                f"Angel One SmartAPI blocked this trade because the backend's public IP ({detected_ip}) "
-                "is not whitelisted. No static-IP egress proxy is configured on this backend "
-                "(Error Code: AG7002)."
-            )
-            actionable_solution = (
-                "1. Set ANGEL_PROXY_URL and ANGEL_STATIC_IP in the runtime environment of the backend "
-                "that places orders (local .env.local, Vercel/AWS env vars, or Docker env).\n"
-                f"2. Whitelist the proxy's egress IP in https://smartapi.angelbroking.com -> Apps -> Edit.\n"
-                "3. Restart/redeploy the backend and verify /api/v1/accounts/proxy-status?verify=true.\n"
-                f"Alternatively, whitelist this backend's IP: {detected_ip} (only if it is truly static)."
-            )
-            suggested_action = "UPDATE_IP_WHITELIST"
+            is_serverless = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
+            if is_serverless:
+                explanation = (
+                    f"Angel One SmartAPI blocked this trade because the backend's public IP ({detected_ip}) "
+                    "is not whitelisted. Because this backend is running on Vercel Serverless (AWS), its outbound "
+                    "IP dynamically rotates across thousands of AWS IPs on each invocation (Error Code: AG7002)."
+                )
+                actionable_solution = (
+                    "1. Obtain a static IPv4 HTTP proxy (e.g. from Webshare.io, ProxyMesh, or a cheap VPS with Squid).\n"
+                    "2. Whitelist the proxy's static IP in https://smartapi.angelbroking.com -> Apps -> Edit (wait 5-10 min).\n"
+                    "3. Configure the proxy:\n"
+                    "   • Either in Trading Accounts -> Edit Account -> 'Static-IP Proxy URL' (format: http://user:pass@host:port)\n"
+                    "   • Or in Vercel Dashboard -> Settings -> Environment Variables (ANGEL_PROXY_URL and ANGEL_STATIC_IP).\n"
+                    "4. Re-authenticate your account and retry.\n"
+                    "Note: Do not whitelist the serverless IP directly, as it will change on future requests."
+                )
+                suggested_action = "CONFIGURE_STATIC_PROXY_ON_BACKEND"
+            else:
+                explanation = (
+                    f"Angel One SmartAPI blocked this trade because the backend's public IP ({detected_ip}) "
+                    "is not whitelisted. No static-IP egress proxy is configured on this backend "
+                    "(Error Code: AG7002)."
+                )
+                actionable_solution = (
+                    "1. Set ANGEL_PROXY_URL and ANGEL_STATIC_IP in the runtime environment of the backend "
+                    "that places orders (local .env.local, Vercel/AWS env vars, or Docker env).\n"
+                    f"2. Whitelist the proxy's egress IP in https://smartapi.angelbroking.com -> Apps -> Edit.\n"
+                    "3. Restart/redeploy the backend and verify /api/v1/accounts/proxy-status?verify=true.\n"
+                    f"Alternatively, whitelist this backend's IP: {detected_ip} (only if it is truly static)."
+                )
+                suggested_action = "UPDATE_IP_WHITELIST"
         else:
             explanation = (
                 f"Angel One SmartAPI blocked this trade because your static egress IP ({detected_ip}) "

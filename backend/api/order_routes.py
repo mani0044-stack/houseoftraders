@@ -59,8 +59,12 @@ def get_orders(db: Session = Depends(get_db)):
         api_key = vault.decrypt(acc.encrypted_api_key)
         pin = vault.decrypt(acc.encrypted_pin) if acc.encrypted_pin else ""
         totp_secret = vault.decrypt(acc.encrypted_totp_secret) if acc.encrypted_totp_secret else ""
+        proxy_url = vault.decrypt(acc.encrypted_proxy_url) if getattr(acc, "encrypted_proxy_url", None) else ""
+        static_ip = getattr(acc, "static_ip", "") or ""
         
-        session = session_manager.get_or_create_session(acc.id, acc.client_id, api_key, pin, totp_secret)
+        session = session_manager.get_or_create_session(
+          acc.id, acc.client_id, api_key, pin, totp_secret, proxy_url=proxy_url, static_ip=static_ip
+        )
         live_orders = session.fetch_orders() if session.status == "CONNECTED" else []
         for lo in live_orders:
           b_id = str(lo.get("orderid") or lo.get("brokerorderid") or "")
@@ -148,13 +152,17 @@ def create_order(payload: CreateOrderPayload, db: Session = Depends(get_db)):
     pin = vault.decrypt(acc.encrypted_pin) if acc.encrypted_pin else ""
     totp_secret = vault.decrypt(acc.encrypted_totp_secret) if acc.encrypted_totp_secret else ""
     client_id = acc.client_id
+    proxy_url = vault.decrypt(acc.encrypted_proxy_url) if getattr(acc, "encrypted_proxy_url", None) else ""
+    static_ip = getattr(acc, "static_ip", "") or ""
 
     session = session_manager.get_or_create_session(
       account_id=acc.id,
       client_id=client_id,
       api_key=api_key,
       pin=pin,
-      totp_secret=totp_secret
+      totp_secret=totp_secret,
+      proxy_url=proxy_url,
+      static_ip=static_ip,
     )
 
     try:
@@ -266,8 +274,12 @@ def cancel_order(order_id: str, db: Session = Depends(get_db)):
     api_key = vault.decrypt(acc.encrypted_api_key) if acc.encrypted_api_key else ""
     pin = vault.decrypt(acc.encrypted_pin) if acc.encrypted_pin else ""
     totp_secret = vault.decrypt(acc.encrypted_totp_secret) if acc.encrypted_totp_secret else ""
+    proxy_url = vault.decrypt(acc.encrypted_proxy_url) if getattr(acc, "encrypted_proxy_url", None) else ""
+    static_ip = getattr(acc, "static_ip", "") or ""
     
-    session = session_manager.get_or_create_session(acc.id, acc.client_id, api_key, pin, totp_secret)
+    session = session_manager.get_or_create_session(
+      acc.id, acc.client_id, api_key, pin, totp_secret, proxy_url=proxy_url, static_ip=static_ip
+    )
     session.cancel_order(order.broker_order_id)
 
 def sync_position_on_order(db: Session, account_id: str, account_name: str, symbol: str, side: str, quantity: int, price: float, algo_id: str = "MANUAL", algo_name: str = "Manual Execution"):
@@ -340,17 +352,22 @@ def place_fo_order_route(payload: Dict[str, Any], db: Session = Depends(get_db))
     acc_id = "acc-demo"
     acc_name = "Angel One Demo Session"
 
+    session = None
     if target_acc and target_acc.encrypted_api_key:
         api_key = vault.decrypt(target_acc.encrypted_api_key) if target_acc.encrypted_api_key else ""
         pin = vault.decrypt(target_acc.encrypted_pin) if target_acc.encrypted_pin else ""
         totp_secret = vault.decrypt(target_acc.encrypted_totp_secret) if target_acc.encrypted_totp_secret else ""
+        proxy_url = vault.decrypt(target_acc.encrypted_proxy_url) if getattr(target_acc, "encrypted_proxy_url", None) else ""
+        static_ip = getattr(target_acc, "static_ip", "") or ""
         
         session = session_manager.get_or_create_session(
             account_id=target_acc.id,
             client_id=target_acc.client_id,
             api_key=api_key,
             pin=pin,
-            totp_secret=totp_secret
+            totp_secret=totp_secret,
+            proxy_url=proxy_url,
+            static_ip=static_ip,
         )
         if session.status != "CONNECTED":
             session.authenticate()
@@ -429,8 +446,14 @@ def place_fo_order_route(payload: Dict[str, Any], db: Session = Depends(get_db))
         except Exception as e:
             return {"status": "FAILED", "error": str(e)}
 
-    # Call production place_fo_order wrapper
-    res = place_fo_order(payload, smart_api, scrip_master)
+    # Call production place_fo_order wrapper with this account's proxy and static IP
+    res = place_fo_order(
+        payload,
+        smart_api,
+        scrip_master,
+        proxies=session.proxies if session else None,
+        static_ip=session.egress_ip if session else "",
+    )
     if res.get("status") == "SUCCESS":
         data = res.get("data") or {}
         tsym = data.get("tradingsymbol") or payload.get("tradingsymbol") or payload.get("symbol", "NIFTY")

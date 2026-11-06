@@ -26,6 +26,7 @@ import {
 import { useUIStore } from '../../store/useUIStore';
 import { useTradingStore } from '../../store/useTradingStore';
 import { ordersApi } from '../../api/ordersApi';
+import { BasketOrderView } from './BasketOrderView';
 
 // Standard F&O Preset Underlyings with default Lot Sizes and Strike steps
 export const FO_UNDERLYING_PRESETS = [
@@ -67,6 +68,8 @@ export interface OrderDiagnostic {
 export const ManualOrderModal: React.FC = () => {
   const isManualOrderOpen = useUIStore((s) => s.isManualOrderOpen);
   const setManualOrderOpen = useUIStore((s) => s.setManualOrderOpen);
+  const orderModalTab = useUIStore((s) => s.orderModalTab);
+  const setOrderModalTab = useUIStore((s) => s.setOrderModalTab);
   const addToast = useUIStore((s) => s.addToast);
 
   const accounts = useTradingStore((s) => s.accounts);
@@ -305,16 +308,28 @@ export const ManualOrderModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fadeIn">
-      <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="bg-white rounded-3xl border border-slate-200/90 shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 px-6 py-4 flex items-center justify-between text-white border-b border-slate-800">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
-              <Zap className="w-5 h-5 animate-pulse" />
+              {orderModalTab === 'basket' ? (
+                <Layers className="w-5 h-5 text-indigo-400 animate-pulse" />
+              ) : (
+                <Zap className="w-5 h-5 animate-pulse" />
+              )}
             </div>
             <div>
-              <h2 className="text-base font-bold tracking-tight font-sans">Angel One SmartAPI Live F&O Order</h2>
-              <p className="text-xs text-slate-400">Direct Broker Order Execution & Risk Guard Terminal</p>
+              <h2 className="text-base font-bold tracking-tight font-sans">
+                {orderModalTab === 'basket'
+                  ? 'Angel One SmartAPI Multi-Leg Basket Order'
+                  : 'Angel One SmartAPI Live F&O Order'}
+              </h2>
+              <p className="text-xs text-slate-400">
+                {orderModalTab === 'basket'
+                  ? 'Hedge-First Multi-Leg Strategy Execution & SEBI Margin Optimizer'
+                  : 'Direct Broker Order Execution & Risk Guard Terminal'}
+              </p>
             </div>
           </div>
 
@@ -326,8 +341,49 @@ export const ManualOrderModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Modal Body */}
-        <form onSubmit={handleSubmitOrder} className="p-6 overflow-y-auto space-y-5 flex-1">
+        {/* Mode Switcher Tabs */}
+        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-100/80 px-6 py-2">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setOrderModalTab('single')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                orderModalTab === 'single'
+                  ? 'bg-white text-slate-900 shadow-xs border border-slate-200/90'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5 text-blue-600" />
+              <span>Single Order</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setOrderModalTab('basket')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                orderModalTab === 'basket'
+                  ? 'bg-white text-indigo-600 shadow-xs border border-slate-200/90'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Basket Order (Multi-Leg)</span>
+              <span className="px-1.5 py-0.5 rounded-md text-[9px] font-mono bg-indigo-100 text-indigo-700 font-extrabold">
+                MARGIN OPTIMIZER
+              </span>
+            </button>
+          </div>
+
+          <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Angel One SmartAPI Egress Proxy Protected</span>
+          </div>
+        </div>
+
+        {orderModalTab === 'basket' ? (
+          <BasketOrderView />
+        ) : (
+          /* Modal Body */
+          <form onSubmit={handleSubmitOrder} className="p-6 overflow-y-auto space-y-5 flex-1">
           {/* Account & Side Selector Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Account Selection */}
@@ -839,6 +895,7 @@ export const ManualOrderModal: React.FC = () => {
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );

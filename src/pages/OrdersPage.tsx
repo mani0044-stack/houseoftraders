@@ -32,13 +32,23 @@ export const OrdersPage: React.FC = () => {
           <p className="text-xs text-slate-500 font-medium mt-0.5">Live Broker Orders Stream, Single & Angel One Basket Orders</p>
         </div>
 
-        <button
-          onClick={() => setManualOrderOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
-        >
-          <Plus className="w-4 h-4 stroke-[2.5]" />
-          <span>Place Order / Basket</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setManualOrderOpen(true, 'basket')}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-indigo-50 border border-indigo-200/90 hover:bg-indigo-100 text-indigo-700 font-bold text-xs shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <Layers className="w-4 h-4 text-indigo-600 stroke-[2.5]" />
+            <span>Basket Order (Multi-Leg)</span>
+          </button>
+
+          <button
+            onClick={() => setManualOrderOpen(true, 'single')}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>Single Order</span>
+          </button>
+        </div>
       </div>
 
       {/* Tabs Bar */}

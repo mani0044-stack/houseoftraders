@@ -27,7 +27,9 @@ interface UIState {
   setAddAccountOpen: (open: boolean, accountToEdit?: TradingAccount | null) => void;
 
   isManualOrderOpen: boolean;
-  setManualOrderOpen: (open: boolean) => void;
+  orderModalTab: 'single' | 'basket';
+  setManualOrderOpen: (open: boolean, tab?: 'single' | 'basket') => void;
+  setOrderModalTab: (tab: 'single' | 'basket') => void;
 
   isEmergencyStopOpen: boolean;
   setEmergencyStopOpen: (open: boolean) => void;
@@ -70,7 +72,13 @@ export const useUIStore = create<UIState>((set) => ({
   setAddAccountOpen: (open, accountToEdit = null) => set({ isAddAccountOpen: open, editingAccount: accountToEdit }),
 
   isManualOrderOpen: false,
-  setManualOrderOpen: (open) => set({ isManualOrderOpen: open }),
+  orderModalTab: 'single',
+  setManualOrderOpen: (open, tab) =>
+    set((s) => ({
+      isManualOrderOpen: open,
+      orderModalTab: tab ? tab : s.orderModalTab,
+    })),
+  setOrderModalTab: (tab) => set({ orderModalTab: tab }),
 
   isEmergencyStopOpen: false,
   setEmergencyStopOpen: (open) => set({ isEmergencyStopOpen: open }),

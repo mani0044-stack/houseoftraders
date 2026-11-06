@@ -6,6 +6,7 @@ import {
   Activity, 
   Lock, 
   Zap,
+  Layers,
   TrendingUp,
   TrendingDown,
   Menu,
@@ -133,15 +134,26 @@ export const Topbar: React.FC = () => {
           </select>
         </div>
 
-        {/* Quick Order Button */}
-        <button
-          onClick={() => setManualOrderOpen(true)}
-          className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-400 hover:bg-emerald-300 text-[#0B2B24] shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
-          title="Place Quick Order on Angel One"
-        >
-          <Zap className="w-3.5 h-3.5 fill-current" />
-          <span className="hidden sm:inline">ORDER</span>
-        </button>
+        {/* Quick Order Buttons */}
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setManualOrderOpen(true, 'basket')}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border border-emerald-400/30 shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+            title="Open Multi-Leg Basket Order Terminal"
+          >
+            <Layers className="w-3.5 h-3.5 text-emerald-300" />
+            <span className="hidden md:inline">BASKET</span>
+          </button>
+
+          <button
+            onClick={() => setManualOrderOpen(true, 'single')}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-400 hover:bg-emerald-300 text-[#0B2B24] shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+            title="Place Quick Order on Angel One"
+          >
+            <Zap className="w-3.5 h-3.5 fill-current" />
+            <span className="hidden sm:inline">ORDER</span>
+          </button>
+        </div>
 
         {/* Trading Mode Switcher */}
         <button

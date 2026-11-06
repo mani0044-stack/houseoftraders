@@ -333,10 +333,10 @@ def sync_position_on_order(db: Session, account_id: str, account_name: str, symb
     except Exception as e:
         logger.error(f"Failed syncing position for {symbol}: {e}")
 
-@router.post("/place_fo")
-def place_fo_order_route(payload: Dict[str, Any], db: Session = Depends(get_db)):
+def _execute_single_fo_order(payload: Dict[str, Any], db: Session) -> Dict[str, Any]:
     """
-    Direct F&O Order Execution wrapper route calling place_fo_order.
+    Helper to execute a single F&O order either live through Angel One SmartAPI session
+    (with proxy / static IP routing) or demo/paper mode when no live session exists.
     """
     from backend.broker.fo_order_manager import place_fo_order, get_scrip_master
     scrip_master = get_scrip_master()
@@ -377,12 +377,25 @@ def place_fo_order_route(payload: Dict[str, Any], db: Session = Depends(get_db))
             acc_id = target_acc.id
             acc_name = target_acc.name
 
+    # If expiry is not supplied in payload, default to nearest active expiry
+    req_expiry = payload.get("expiry") or ""
+    if not req_expiry:
+        try:
+            from backend.engine.option_chain_service import option_chain_service
+            avail = option_chain_service.get_available_expiries(payload.get("symbol") or payload.get("underlying") or "NIFTY")
+            if avail:
+                req_expiry = avail[0]
+        except Exception:
+            pass
+    if req_expiry and not payload.get("expiry"):
+        payload["expiry"] = req_expiry
+
     # If no connected live session, place order in DB demo/paper mode
     if not smart_api:
         try:
             scrip_info = scrip_master.lookup_fo_instrument(
                 symbol=payload.get("symbol") or payload.get("underlying") or "NIFTY",
-                expiry=payload.get("expiry", ""),
+                expiry=req_expiry,
                 strike=payload.get("strike"),
                 option_type=payload.get("option_type") or payload.get("optiontype"),
                 exchange=payload.get("exchange", "NFO"),
@@ -479,6 +492,89 @@ def place_fo_order_route(payload: Dict[str, Any], db: Session = Depends(get_db))
         sync_position_on_order(db, acc_id, acc_name, tsym, side_val, qty, p_val)
 
     return res
+
+@router.post("/place_fo")
+def place_fo_order_route(payload: Dict[str, Any], db: Session = Depends(get_db)):
+    """
+    Direct F&O Order Execution wrapper route calling place_fo_order.
+    """
+    return _execute_single_fo_order(payload, db)
+
+@router.post("/basket")
+def place_basket_order_route(payload: Dict[str, Any], db: Session = Depends(get_db)):
+    """
+    Execute a multi-leg basket order.
+    Supports hedge_first ordering (BUY legs executed before SELL legs) to maximize exchange margin benefits.
+    """
+    basket_name = payload.get("basketName") or payload.get("name") or "Basket Order"
+    orders: List[Dict[str, Any]] = payload.get("orders") or []
+    hedge_first = bool(payload.get("hedge_first", True))
+    default_acc_id = payload.get("accountId")
+
+    if not orders:
+        raise HTTPException(status_code=400, detail="Basket must contain at least one order leg.")
+
+    # Tag orders with their original index to preserve user ordering in results
+    indexed_orders = []
+    for idx, ord_item in enumerate(orders):
+        item_copy = dict(ord_item)
+        item_copy["_original_index"] = idx
+        if not item_copy.get("accountId") and default_acc_id:
+            item_copy["accountId"] = default_acc_id
+        indexed_orders.append(item_copy)
+
+    # If hedge_first is enabled, prioritize BUY legs before SELL legs
+    if hedge_first:
+        def get_side_rank(item):
+            side = str(item.get("transaction_type") or item.get("side") or "").upper()
+            return 0 if side == "BUY" else 1
+        indexed_orders.sort(key=get_side_rank)
+
+    results = []
+    successful_count = 0
+    failed_count = 0
+
+    for ord_item in indexed_orders:
+        orig_idx = ord_item.pop("_original_index", 0)
+        res = _execute_single_fo_order(ord_item, db)
+        is_success = res.get("status") == "SUCCESS"
+        if is_success:
+            successful_count += 1
+        else:
+            failed_count += 1
+
+        results.append({
+            "original_index": orig_idx,
+            "order": {
+                "symbol": ord_item.get("symbol") or ord_item.get("underlying"),
+                "strike": ord_item.get("strike"),
+                "option_type": ord_item.get("option_type") or ord_item.get("optiontype"),
+                "transaction_type": ord_item.get("transaction_type") or ord_item.get("side"),
+                "lots": ord_item.get("lots", 1),
+                "order_type": ord_item.get("order_type", "MARKET"),
+                "price": ord_item.get("price", 0.0),
+            },
+            "status": res.get("status"),
+            "order_id": res.get("order_id") or (res.get("data") or {}).get("orderid"),
+            "message": res.get("message") or res.get("error") or "",
+            "raw": res
+        })
+
+    # Sort results back into the original order defined by the user
+    results.sort(key=lambda r: r["original_index"])
+
+    overall_status = "SUCCESS" if failed_count == 0 else ("PARTIAL" if successful_count > 0 else "FAILED")
+
+    return {
+        "status": overall_status,
+        "basketName": basket_name,
+        "totalOrders": len(orders),
+        "successfulOrders": successful_count,
+        "failedOrders": failed_count,
+        "results": results,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+
 
 
 

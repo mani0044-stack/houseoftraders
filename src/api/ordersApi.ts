@@ -13,6 +13,48 @@ export interface CreateOrderRequest {
   algoName?: string;
 }
 
+export interface BasketLegItem {
+  id?: string;
+  symbol: string;
+  expiry?: string;
+  strike?: number | null;
+  option_type?: 'CE' | 'PE' | 'FUT';
+  transaction_type: 'BUY' | 'SELL';
+  order_type: 'MARKET' | 'LIMIT';
+  product_type?: 'INTRADAY' | 'CARRYFORWARD';
+  lots: number;
+  price?: number;
+  exchange?: 'NFO' | 'BFO';
+  tradingsymbol?: string;
+  symboltoken?: string;
+}
+
+export interface BasketOrderRequest {
+  accountId?: string;
+  basketName?: string;
+  hedge_first?: boolean;
+  orders: BasketLegItem[];
+}
+
+export interface BasketLegResult {
+  original_index: number;
+  order: BasketLegItem;
+  status: 'SUCCESS' | 'FAILED' | string;
+  order_id?: string;
+  message?: string;
+  raw?: any;
+}
+
+export interface BasketOrderResponse {
+  status: 'SUCCESS' | 'PARTIAL' | 'FAILED';
+  basketName: string;
+  totalOrders: number;
+  successfulOrders: number;
+  failedOrders: number;
+  results: BasketLegResult[];
+  timestamp: string;
+}
+
 export const ordersApi = {
   getOrders: async (): Promise<Order[]> => {
     try {
@@ -30,6 +72,11 @@ export const ordersApi = {
 
   placeFoOrder: async (payload: any): Promise<any> => {
     const res = await axiosClient.post<any>('/orders/place_fo', payload, { timeout: 30000 });
+    return res.data;
+  },
+
+  placeBasketOrder: async (payload: BasketOrderRequest): Promise<BasketOrderResponse> => {
+    const res = await axiosClient.post<BasketOrderResponse>('/orders/basket', payload, { timeout: 60000 });
     return res.data;
   },
 

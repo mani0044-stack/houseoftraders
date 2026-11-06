@@ -20,19 +20,40 @@ const baseURL = formatBaseUrl(rawApiUrl);
 
 export const axiosClient = axios.create({
   baseURL,
-  timeout: 10000,
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
+// Attach Authorization Bearer token to all outgoing requests
+axiosClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('hot_auth_token');
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // If unauthorized and not already on the login page, clear token and redirect
+    if (error.response?.status === 401) {
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        localStorage.removeItem('hot_auth_token');
+        localStorage.removeItem('hot_auth_user');
+        window.location.href = '/login';
+      }
+    }
+
     if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-      error.message = 'API Request Timed Out (10s limit exceeded). Verify that the FastAPI backend server is running and broker APIs are responding.';
+      error.message = 'API Request Timed Out. Verify that the FastAPI backend server is running and broker APIs are responding.';
     } else if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
-      error.message = 'Backend Server Unreachable. Please start the FastAPI backend on http://localhost:8000.';
+      error.message = 'Backend Server Unreachable. Please verify the backend API is deployed and reachable.';
     }
     console.warn('API Call Notice:', error.message);
     return Promise.reject(error);

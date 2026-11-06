@@ -1,7 +1,9 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from './components/layout/Layout';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { AlgoManagerPage } from './pages/AlgoManagerPage';
 import { CreateAlgoPage } from './pages/CreateAlgoPage';
@@ -29,7 +31,18 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Layout />}>
+          {/* Public Authentication Route */}
+          <Route path="/login" element={<LoginPage />} />
+
+          {/* Protected Application Routes */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<DashboardPage />} />
             <Route path="smartapi-fo" element={<SmartApiTerminalPage />} />
             <Route path="create-algo" element={<CreateAlgoPage />} />
@@ -43,6 +56,9 @@ export function App() {
             <Route path="activity-logs" element={<ActivityLogsPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
+
+          {/* Fallback Catch-all Route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

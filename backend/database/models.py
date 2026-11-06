@@ -8,7 +8,9 @@ class UserModel(Base):
 
   id = Column(String, primary_key=True, index=True)
   email = Column(String, unique=True, index=True, nullable=False)
+  name = Column(String, default="Trader")
   hashed_password = Column(String, nullable=False)
+  role = Column(String, default="admin")
   is_active = Column(Boolean, default=True)
   created_at = Column(DateTime, default=datetime.utcnow)
 

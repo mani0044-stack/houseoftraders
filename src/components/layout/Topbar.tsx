@@ -8,11 +8,13 @@ import {
   Zap,
   TrendingUp,
   TrendingDown,
-  Menu
+  Menu,
+  LogOut
 } from 'lucide-react';
 import logoImg from '../../assets/logo.png';
 import { useTradingStore } from '../../store/useTradingStore';
 import { useUIStore } from '../../store/useUIStore';
+import { useAuthStore } from '../../store/useAuthStore';
 import { ConnectionStatusPill } from '../common/ConnectionStatusPill';
 
 export const Topbar: React.FC = () => {
@@ -30,6 +32,8 @@ export const Topbar: React.FC = () => {
   const setTradingMode = useTradingStore((s) => s.setTradingMode);
   const toggleMobileMenu = useUIStore((s) => s.toggleMobileMenu);
   const activityLogs = useTradingStore((s) => s.activityLogs);
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
 
   const [timeStr, setTimeStr] = useState<string>('');
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
@@ -206,16 +210,29 @@ export const Topbar: React.FC = () => {
           </button>
 
           {showProfileMenu && (
-            <div className="absolute right-0 mt-2 w-52 bg-white border border-[#E3E8E6] rounded-2xl shadow-xl py-1.5 z-50 text-xs animate-fade-scale">
+            <div className="absolute right-0 mt-2 w-56 bg-white border border-[#E3E8E6] rounded-2xl shadow-xl py-1.5 z-50 text-xs animate-fade-scale">
               <div className="px-3.5 py-2.5 border-b border-[#E3E8E6]">
-                <p className="font-bold text-[#12211C]">House of Traders Pro</p>
-                <p className="text-[10px] text-[#6B7C75] font-mono">admin@houseoftraders.in</p>
+                <p className="font-bold text-[#12211C] truncate">{user?.name || 'Administrator'}</p>
+                <p className="text-[10px] text-[#6B7C75] font-mono truncate">{user?.email || 'admin@houseoftraders.io'}</p>
               </div>
-              <div className="px-3.5 py-2.5 space-y-1 text-[#6B7C75]">
+              <div className="px-3.5 py-2 space-y-1 text-[#6B7C75]">
                 <div className="flex items-center justify-between text-[11px]">
                   <span>Broker Connection:</span>
                   <span className="text-emerald-600 font-semibold flex items-center gap-1"><Lock className="w-3 h-3" /> Active</span>
                 </div>
+              </div>
+              <div className="p-1 border-t border-[#E3E8E6]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout();
+                    window.location.href = '/login';
+                  }}
+                  className="w-full px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 font-semibold rounded-lg flex items-center gap-2 transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sign Out</span>
+                </button>
               </div>
             </div>
           )}

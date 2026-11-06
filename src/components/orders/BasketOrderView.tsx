@@ -15,7 +15,9 @@ import {
   Info,
   Users,
   Calendar,
-  DollarSign
+  DollarSign,
+  Wallet,
+  Minus
 } from 'lucide-react';
 import { useTradingStore } from '../../store/useTradingStore';
 import { useUIStore } from '../../store/useUIStore';
@@ -209,6 +211,23 @@ export const BasketOrderView: React.FC = () => {
   const [hedgeFirst, setHedgeFirst] = useState<boolean>(true);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
 
+  // Individual Account Lots / Multipliers State
+  const [accountLots, setAccountLots] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    setAccountLots((prev) => {
+      const next = { ...prev };
+      accounts.forEach((acc) => {
+        if (next[acc.id] === undefined) {
+          next[acc.id] = 1;
+        }
+      });
+      return next;
+    });
+  }, [accounts]);
+
+  const activeAccount = accounts.find((a) => a.id === selectedAccountId);
+
   // Legs State
   const activePreset = FO_UNDERLYING_PRESETS.find((p) => p.symbol === symbol) || FO_UNDERLYING_PRESETS[0];
   const lotSize = activePreset.lotSize;
@@ -337,38 +356,75 @@ export const BasketOrderView: React.FC = () => {
 
   // Summary Metrics
   const summary = useMemo(() => {
-    let totalLots = 0;
+    const isMulti = selectedAccountId === 'ALL';
+    let baseTotalLots = 0;
     let buyLegsCount = 0;
     let sellLegsCount = 0;
-    let netPremiumEst = 0;
+    let baseNetPremiumEst = 0;
 
     legs.forEach((leg) => {
       const lLots = Number(leg.lots) || 1;
-      totalLots += lLots;
+      baseTotalLots += lLots;
       if (leg.transaction_type === 'BUY') {
         buyLegsCount++;
-        if (leg.price) netPremiumEst -= leg.price * lLots * lotSize;
+        if (leg.price) baseNetPremiumEst -= leg.price * lLots * lotSize;
       } else {
         sellLegsCount++;
-        if (leg.price) netPremiumEst += leg.price * lLots * lotSize;
+        if (leg.price) baseNetPremiumEst += leg.price * lLots * lotSize;
       }
     });
 
+    const totalAccountLotsSum = isMulti
+      ? accounts.reduce((sum, acc) => sum + (Number(accountLots[acc.id]) || 0), 0)
+      : 1;
+
+    const totalActiveAccounts = isMulti
+      ? accounts.filter((a) => (Number(accountLots[a.id]) || 0) > 0).length
+      : 1;
+
+    const effectiveTotalQuantity = isMulti
+      ? baseTotalLots * totalAccountLotsSum * lotSize
+      : baseTotalLots * lotSize;
+
+    const effectiveNetPremium = isMulti
+      ? baseNetPremiumEst * totalAccountLotsSum
+      : baseNetPremiumEst;
+
     return {
       totalLegs: legs.length,
-      totalLots,
-      totalQuantity: totalLots * lotSize,
+      baseTotalLots,
+      totalLots: isMulti ? baseTotalLots * totalAccountLotsSum : baseTotalLots,
+      totalQuantity: effectiveTotalQuantity,
       buyLegsCount,
       sellLegsCount,
-      netPremiumEst,
+      netPremiumEst: effectiveNetPremium,
+      totalAccountLotsSum,
+      totalActiveAccounts,
     };
-  }, [legs, lotSize]);
+  }, [legs, lotSize, selectedAccountId, accountLots, accounts]);
 
   // Submit Basket Order
   const handleExecuteBasket = async (e: React.FormEvent) => {
     e.preventDefault();
     if (legs.length === 0) {
       addToast('Empty Basket', 'Please add at least one leg to the basket.', 'warning');
+      return;
+    }
+
+    const accountAllocations = selectedAccountId === 'ALL'
+      ? accounts
+          .filter((acc) => (Number(accountLots[acc.id]) || 0) > 0)
+          .map((acc) => ({
+            accountId: acc.id,
+            accountName: acc.name,
+            lots: Number(accountLots[acc.id]) || 1,
+            multiplier: Number(accountLots[acc.id]) || 1,
+            availableMargin: acc.availableMargin,
+          }))
+      : undefined;
+
+    if (selectedAccountId === 'ALL' && (!accountAllocations || accountAllocations.length === 0)) {
+      addToast('No Lots Allocated', 'Please allocate at least 1 lot to at least one account.', 'warning');
       return;
     }
 
@@ -394,14 +450,18 @@ export const BasketOrderView: React.FC = () => {
         basketName: basketName.trim() || `${symbol} Basket`,
         hedge_first: hedgeFirst,
         orders: formattedOrders,
+        accountAllocations,
       });
 
       setExecutionResponse(response);
 
       if (response.status === 'SUCCESS') {
+        const accLabel = selectedAccountId === 'ALL'
+          ? `across ${response.accountCount || accountAllocations?.length} accounts`
+          : 'on target account';
         addToast(
           'Basket Executed Successfully',
-          `All ${response.successfulOrders} legs filled across ${selectedAccountId === 'ALL' ? 'active accounts' : 'target account'}.`,
+          `All ${response.successfulOrders} legs filled ${accLabel}.`,
           'success'
         );
         fetchOrders();
@@ -431,22 +491,45 @@ export const BasketOrderView: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Account Selector */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-            <Users className="w-3.5 h-3.5 text-blue-600" />
-            <span>Target Account</span>
+          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-blue-600" />
+              <span>Target Account</span>
+            </span>
+            {selectedAccountId === 'ALL' && (
+              <span className="text-[10px] font-mono text-blue-600 font-bold">
+                {accounts.length} Accounts
+              </span>
+            )}
           </label>
           <select
             value={selectedAccountId}
             onChange={(e) => setSelectedAccountId(e.target.value)}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           >
-            <option value="ALL">ALL ACTIVE ACCOUNTS (Multi-Broker)</option>
+            <option value="ALL">ALL ACTIVE ACCOUNTS (Custom Lots & Margin)</option>
             {accounts.map((acc) => (
               <option key={acc.id} value={acc.id}>
                 {acc.name} ({acc.clientId})
               </option>
             ))}
           </select>
+
+          {/* Single Account Available Margin Badge */}
+          {activeAccount && selectedAccountId !== 'ALL' && (
+            <div className="mt-2 bg-emerald-50/70 border border-emerald-200/90 rounded-xl p-2.5 flex items-center justify-between text-xs animate-fadeIn">
+              <div className="flex items-center gap-1.5">
+                <Wallet className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="text-slate-600 font-medium">Available Margin:</span>
+                <span className="font-extrabold font-mono text-emerald-800">
+                  ₹{(activeAccount.availableMargin || 0).toLocaleString('en-IN')}
+                </span>
+              </div>
+              <span className="text-[10px] font-mono text-slate-500">
+                Total: ₹{(activeAccount.totalCapital || 0).toLocaleString('en-IN')}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Basket Label */}
@@ -464,6 +547,146 @@ export const BasketOrderView: React.FC = () => {
           />
         </div>
       </div>
+
+      {/* Multi-Account Basket Lot Allocation Card */}
+      {selectedAccountId === 'ALL' && accounts.length > 0 && (
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 animate-fadeIn shadow-2xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-blue-600" />
+              <div>
+                <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+                  Account-Wise Basket Lots & Margin Allocation
+                </h3>
+                <p className="text-[10px] text-slate-500">
+                  Assign individual basket lot multipliers according to each account's available funds
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const resetLots: Record<string, number> = {};
+                  accounts.forEach((a) => {
+                    resetLots[a.id] = 1;
+                  });
+                  setAccountLots(resetLots);
+                }}
+                className="text-[10px] font-bold text-blue-700 hover:text-blue-800 bg-blue-100/70 hover:bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-200 transition-colors"
+              >
+                Set 1 Lot Each
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  // Proportional to funds: 1 lot per ~150k funds, min 1
+                  const marginLots: Record<string, number> = {};
+                  accounts.forEach((a) => {
+                    const avail = a.availableMargin || 0;
+                    marginLots[a.id] = Math.max(1, Math.floor(avail / 150000));
+                  });
+                  setAccountLots(marginLots);
+                }}
+                className="text-[10px] font-bold text-indigo-700 hover:text-indigo-800 bg-indigo-100/70 hover:bg-indigo-100 px-2.5 py-1 rounded-lg border border-indigo-200 transition-colors"
+              >
+                Auto-Size by Funds
+              </button>
+            </div>
+          </div>
+
+          {/* Account Rows */}
+          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+            {accounts.map((acc) => {
+              const accLotCount = accountLots[acc.id] ?? 1;
+              const isSkipped = accLotCount === 0;
+
+              return (
+                <div
+                  key={acc.id}
+                  className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 text-xs transition-colors ${
+                    isSkipped ? 'bg-slate-100/60 border-slate-200 opacity-60' : 'bg-white border-slate-200 shadow-2xs'
+                  }`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-slate-900 truncate flex items-center gap-1.5">
+                      <span>{acc.name}</span>
+                      <span className="text-[10px] font-mono font-normal text-slate-500">
+                        ({acc.clientId})
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-emerald-700 font-mono font-semibold flex items-center gap-1 mt-0.5">
+                      <Wallet className="w-3 h-3 text-emerald-600" />
+                      <span>
+                        Available Funds: ₹{(acc.availableMargin || 0).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Individual Basket Lots Multiplier Counter */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-1.5 py-0.5">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAccountLots((p) => ({
+                            ...p,
+                            [acc.id]: Math.max(0, (p[acc.id] ?? 1) - 1),
+                          }))
+                        }
+                        className="p-1 rounded-lg hover:bg-slate-200 text-slate-700 font-bold"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <input
+                        type="number"
+                        min="0"
+                        value={accLotCount}
+                        onChange={(e) =>
+                          setAccountLots((p) => ({
+                            ...p,
+                            [acc.id]: Math.max(0, Number(e.target.value)),
+                          }))
+                        }
+                        className="w-10 text-xs font-mono font-extrabold text-slate-900 text-center focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAccountLots((p) => ({
+                            ...p,
+                            [acc.id]: (p[acc.id] ?? 1) + 1,
+                          }))
+                        }
+                        className="p-1 rounded-lg hover:bg-slate-200 text-slate-700 font-bold"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+
+                    <span
+                      className={`text-[10px] font-mono font-bold w-24 text-right ${
+                        isSkipped ? 'text-slate-400' : 'text-indigo-700'
+                      }`}
+                    >
+                      {isSkipped ? 'SKIPPED' : `${accLotCount}x (${accLotCount * legs.length} Legs)`}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Multi-Account Basket Summary Bar */}
+          <div className="bg-indigo-50/80 border border-indigo-200 rounded-xl p-2.5 flex items-center justify-between text-[11px] font-mono">
+            <span className="text-indigo-900 font-semibold">Combined Basket Multipliers:</span>
+            <span className="font-extrabold text-indigo-950">
+              {summary.totalAccountLotsSum} Lots across {summary.totalActiveAccounts} Active Accounts ({summary.totalQuantity} Shares)
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Strategy Templates Bar */}
       <div>
@@ -848,6 +1071,11 @@ export const BasketOrderView: React.FC = () => {
                   }`}
                 >
                   <div className="flex items-center gap-2">
+                    {res.accountName && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                        {res.accountName}
+                      </span>
+                    )}
                     <span
                       className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold ${
                         res.order.transaction_type === 'BUY'
@@ -922,3 +1150,4 @@ export const BasketOrderView: React.FC = () => {
     </form>
   );
 };
+

@@ -497,45 +497,130 @@ def _execute_single_fo_order(payload: Dict[str, Any], db: Session) -> Dict[str, 
 def place_fo_order_route(payload: Dict[str, Any], db: Session = Depends(get_db)):
     """
     Direct F&O Order Execution wrapper route calling place_fo_order.
+    Supports multi-account individual lot allocation when 'accountAllocations' is supplied.
     """
+    allocations = payload.get("accountAllocations") or []
+    valid_allocs = [a for a in allocations if int(a.get("lots", 0)) > 0]
+
+    if valid_allocs:
+        account_results = []
+        success_count = 0
+        fail_count = 0
+        first_order_id = None
+
+        for alloc in valid_allocs:
+            acc_id = alloc.get("accountId")
+            acc_name = alloc.get("accountName") or acc_id
+            acc_lots = int(alloc.get("lots", 1))
+
+            acc_payload = dict(payload)
+            acc_payload.pop("accountAllocations", None)
+            acc_payload["accountId"] = acc_id
+            acc_payload["lots"] = acc_lots
+
+            res = _execute_single_fo_order(acc_payload, db)
+            is_ok = res.get("status") == "SUCCESS"
+            if is_ok:
+                success_count += 1
+                if not first_order_id:
+                    first_order_id = res.get("order_id") or (res.get("data") or {}).get("orderid")
+            else:
+                fail_count += 1
+
+            account_results.append({
+                "accountId": acc_id,
+                "accountName": acc_name,
+                "lots": acc_lots,
+                "status": res.get("status"),
+                "order_id": res.get("order_id") or (res.get("data") or {}).get("orderid"),
+                "message": res.get("message") or res.get("error") or "",
+                "raw": res
+            })
+
+        overall_status = "SUCCESS" if fail_count == 0 else ("PARTIAL" if success_count > 0 else "FAILED")
+        return {
+            "status": overall_status,
+            "order_id": first_order_id or "MULTI-ORDER",
+            "message": f"Executed across {success_count}/{len(valid_allocs)} accounts.",
+            "totalAccounts": len(valid_allocs),
+            "successfulAccounts": success_count,
+            "failedAccounts": fail_count,
+            "accountResults": account_results
+        }
+
     return _execute_single_fo_order(payload, db)
 
 @router.post("/basket")
 def place_basket_order_route(payload: Dict[str, Any], db: Session = Depends(get_db)):
     """
     Execute a multi-leg basket order.
-    Supports hedge_first ordering (BUY legs executed before SELL legs) to maximize exchange margin benefits.
+    Supports individual account lot allocation when 'accountAllocations' is supplied.
+    Supports hedge_first ordering (BUY legs executed before SELL legs) across all accounts to maximize exchange margin benefits.
     """
     basket_name = payload.get("basketName") or payload.get("name") or "Basket Order"
     orders: List[Dict[str, Any]] = payload.get("orders") or []
     hedge_first = bool(payload.get("hedge_first", True))
     default_acc_id = payload.get("accountId")
+    allocations = payload.get("accountAllocations") or []
+    valid_allocs = [a for a in allocations if int(a.get("lots", 0)) > 0]
 
     if not orders:
         raise HTTPException(status_code=400, detail="Basket must contain at least one order leg.")
 
-    # Tag orders with their original index to preserve user ordering in results
-    indexed_orders = []
-    for idx, ord_item in enumerate(orders):
-        item_copy = dict(ord_item)
-        item_copy["_original_index"] = idx
-        if not item_copy.get("accountId") and default_acc_id:
-            item_copy["accountId"] = default_acc_id
-        indexed_orders.append(item_copy)
+    # Build list of orders to execute
+    orders_to_execute = []
 
-    # If hedge_first is enabled, prioritize BUY legs before SELL legs
+    if valid_allocs:
+        # Multi-account lot distribution:
+        # Replicate basket legs for each account with that account's assigned lots/multiplier
+        order_idx = 0
+        for alloc in valid_allocs:
+            acc_id = alloc.get("accountId")
+            acc_name = alloc.get("accountName") or acc_id
+            acc_lots = int(alloc.get("lots", 1))
+            multiplier = float(alloc.get("multiplier") or acc_lots)
+
+            for leg_idx, ord_item in enumerate(orders):
+                item_copy = dict(ord_item)
+                item_copy["_original_index"] = leg_idx
+                item_copy["_exec_index"] = order_idx
+                item_copy["_account_id"] = acc_id
+                item_copy["_account_name"] = acc_name
+                item_copy["accountId"] = acc_id
+                # Scale leg lots by the account's assigned lot multiplier
+                base_leg_lots = int(ord_item.get("lots") or 1)
+                item_copy["lots"] = max(1, int(base_leg_lots * multiplier))
+                orders_to_execute.append(item_copy)
+                order_idx += 1
+    else:
+        # Single account execution
+        for idx, ord_item in enumerate(orders):
+            item_copy = dict(ord_item)
+            item_copy["_original_index"] = idx
+            item_copy["_exec_index"] = idx
+            item_copy["_account_id"] = default_acc_id
+            item_copy["_account_name"] = "Target Account"
+            if not item_copy.get("accountId") and default_acc_id:
+                item_copy["accountId"] = default_acc_id
+            orders_to_execute.append(item_copy)
+
+    # If hedge_first is enabled, prioritize BUY legs before SELL legs across all accounts
     if hedge_first:
         def get_side_rank(item):
             side = str(item.get("transaction_type") or item.get("side") or "").upper()
             return 0 if side == "BUY" else 1
-        indexed_orders.sort(key=get_side_rank)
+        orders_to_execute.sort(key=get_side_rank)
 
     results = []
     successful_count = 0
     failed_count = 0
 
-    for ord_item in indexed_orders:
+    for ord_item in orders_to_execute:
         orig_idx = ord_item.pop("_original_index", 0)
+        exec_idx = ord_item.pop("_exec_index", 0)
+        acc_id_val = ord_item.pop("_account_id", None)
+        acc_name_val = ord_item.pop("_account_name", None)
+
         res = _execute_single_fo_order(ord_item, db)
         is_success = res.get("status") == "SUCCESS"
         if is_success:
@@ -545,6 +630,9 @@ def place_basket_order_route(payload: Dict[str, Any], db: Session = Depends(get_
 
         results.append({
             "original_index": orig_idx,
+            "exec_index": exec_idx,
+            "accountId": acc_id_val,
+            "accountName": acc_name_val,
             "order": {
                 "symbol": ord_item.get("symbol") or ord_item.get("underlying"),
                 "strike": ord_item.get("strike"),
@@ -560,20 +648,22 @@ def place_basket_order_route(payload: Dict[str, Any], db: Session = Depends(get_
             "raw": res
         })
 
-    # Sort results back into the original order defined by the user
-    results.sort(key=lambda r: r["original_index"])
+    # Sort results back by execution index
+    results.sort(key=lambda r: r["exec_index"])
 
     overall_status = "SUCCESS" if failed_count == 0 else ("PARTIAL" if successful_count > 0 else "FAILED")
 
     return {
         "status": overall_status,
         "basketName": basket_name,
-        "totalOrders": len(orders),
+        "totalOrders": len(orders_to_execute),
         "successfulOrders": successful_count,
         "failedOrders": failed_count,
+        "accountCount": len(valid_allocs) if valid_allocs else 1,
         "results": results,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
+
 
 
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   X, 
   Zap, 
@@ -102,11 +102,35 @@ export const ManualOrderModal: React.FC = () => {
   const [copiedIp, setCopiedIp] = useState<boolean>(false);
   const [isReauthing, setIsReauthing] = useState<boolean>(false);
 
+  // Individual Account Lots State (for Multi-Account allocation)
+  const [accountLots, setAccountLots] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    setAccountLots((prev) => {
+      const next = { ...prev };
+      accounts.forEach((acc) => {
+        if (next[acc.id] === undefined) {
+          next[acc.id] = 1;
+        }
+      });
+      return next;
+    });
+  }, [accounts]);
+
+  const activeAccount = accounts.find((a) => a.id === selectedAccountId);
+
   // Get Lot Size & Freeze Limit for selected Underlying
   const activePreset = FO_UNDERLYING_PRESETS.find((p) => p.symbol === symbol);
   const currentLotSize = resolvedScrip?.lotsize || activePreset?.lotSize || 50;
   const currentStep = activePreset?.step || 50;
-  const totalQuantity = lots * currentLotSize;
+
+  const totalMultiLots = useMemo(() => {
+    if (selectedAccountId !== 'ALL') return lots;
+    return accounts.reduce((sum, acc) => sum + (Number(accountLots[acc.id]) || 0), 0);
+  }, [selectedAccountId, lots, accountLots, accounts]);
+
+  const totalEffectiveLots = selectedAccountId === 'ALL' ? totalMultiLots : lots;
+  const totalQuantity = totalEffectiveLots * currentLotSize;
 
   const freezeInfo = EXCHANGE_FREEZE_LIMITS[symbol];
   const isFreezeExceeded = Boolean(freezeInfo && totalQuantity > freezeInfo.freezeQty);
@@ -185,6 +209,23 @@ export const ManualOrderModal: React.FC = () => {
     setIsSubmitting(true);
     setExecResult(null);
 
+    const accountAllocations = selectedAccountId === 'ALL'
+      ? accounts
+          .filter((acc) => (Number(accountLots[acc.id]) || 0) > 0)
+          .map((acc) => ({
+            accountId: acc.id,
+            accountName: acc.name,
+            lots: Number(accountLots[acc.id]) || 1,
+            availableMargin: acc.availableMargin,
+          }))
+      : undefined;
+
+    if (selectedAccountId === 'ALL' && (!accountAllocations || accountAllocations.length === 0)) {
+      addToast('No Lots Allocated', 'Please allocate at least 1 lot to at least one account.', 'warning');
+      setIsSubmitting(false);
+      return;
+    }
+
     const payload = {
       accountId: selectedAccountId,
       symbol,
@@ -195,20 +236,27 @@ export const ManualOrderModal: React.FC = () => {
       transaction_type: side,
       order_type: orderType,
       product_type: productType,
-      lots,
+      lots: selectedAccountId === 'ALL' ? totalMultiLots : lots,
       price: orderType === 'MARKET' ? 0 : price,
       trigger_price: orderType.includes('STOPLOSS') ? triggerPrice : 0,
       tradingsymbol: resolvedScrip?.tradingsymbol,
-      symboltoken: resolvedScrip?.symboltoken
+      symboltoken: resolvedScrip?.symboltoken,
+      accountAllocations,
     };
 
     try {
       const res = await ordersApi.placeFoOrder(payload);
 
-      if (res && res.status === 'SUCCESS') {
+      if (res && (res.status === 'SUCCESS' || res.status === 'PARTIAL')) {
         const orderId = res.order_id || res.data?.orderid || 'EXECUTED';
         setExecResult({ status: 'SUCCESS', orderId });
-        addToast('F&O Order Executed', `Broker Order ID: ${orderId}`, 'success');
+        const successCount = res.successfulAccounts ?? 1;
+        const totalCount = res.totalAccounts ?? 1;
+        addToast(
+          res.status === 'SUCCESS' ? 'F&O Order(s) Executed' : 'Partial Execution',
+          res.message || `Order successfully routed across ${successCount}/${totalCount} accounts.`,
+          res.status === 'SUCCESS' ? 'success' : 'warning'
+        );
 
         fetchOrders();
         fetchPositions();
@@ -388,22 +436,45 @@ export const ManualOrderModal: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Account Selection */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-blue-600" />
-                <span>Target Trading Account</span>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Target Trading Account</span>
+                </span>
+                {selectedAccountId === 'ALL' && (
+                  <span className="text-[10px] font-mono text-blue-600 font-bold">
+                    {accounts.length} Accounts
+                  </span>
+                )}
               </label>
               <select
                 value={selectedAccountId}
                 onChange={(e) => setSelectedAccountId(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
               >
-                <option value="ALL">ALL ACTIVE ACCOUNTS (Multi-Broker Sync)</option>
+                <option value="ALL">ALL ACTIVE ACCOUNTS (Custom Lots & Margin)</option>
                 {accounts.map((acc) => (
                   <option key={acc.id} value={acc.id}>
                     {acc.name} ({acc.clientId})
                   </option>
                 ))}
               </select>
+
+              {/* Single Account Available Margin Badge */}
+              {activeAccount && selectedAccountId !== 'ALL' && (
+                <div className="mt-2 bg-emerald-50/70 border border-emerald-200/90 rounded-xl p-2.5 flex items-center justify-between text-xs animate-fadeIn">
+                  <div className="flex items-center gap-1.5">
+                    <Wallet className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="text-slate-600 font-medium">Available Margin:</span>
+                    <span className="font-extrabold font-mono text-emerald-800">
+                      ₹{(activeAccount.availableMargin || 0).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-slate-500">
+                    Total: ₹{(activeAccount.totalCapital || 0).toLocaleString('en-IN')}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Side Switcher (BUY vs SELL) */}
@@ -435,6 +506,147 @@ export const ManualOrderModal: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* Multi-Account Lot Allocation Card */}
+          {selectedAccountId === 'ALL' && accounts.length > 0 && (
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 animate-fadeIn shadow-2xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-blue-600" />
+                  <div>
+                    <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+                      Account-Wise Lots & Margin Distribution
+                    </h3>
+                    <p className="text-[10px] text-slate-500">
+                      Allocate custom lots according to each account's available funds
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const resetLots: Record<string, number> = {};
+                      accounts.forEach((a) => {
+                        resetLots[a.id] = 1;
+                      });
+                      setAccountLots(resetLots);
+                    }}
+                    className="text-[10px] font-bold text-blue-700 hover:text-blue-800 bg-blue-100/70 hover:bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-200 transition-colors"
+                  >
+                    Set 1 Lot Each
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Proportional to funds: 1 lot per ~100k available funds, min 1
+                      const marginLots: Record<string, number> = {};
+                      accounts.forEach((a) => {
+                        const avail = a.availableMargin || 0;
+                        marginLots[a.id] = Math.max(1, Math.floor(avail / 100000));
+                      });
+                      setAccountLots(marginLots);
+                    }}
+                    className="text-[10px] font-bold text-indigo-700 hover:text-indigo-800 bg-indigo-100/70 hover:bg-indigo-100 px-2.5 py-1 rounded-lg border border-indigo-200 transition-colors"
+                  >
+                    Auto-Size by Funds
+                  </button>
+                </div>
+              </div>
+
+              {/* Account Rows */}
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {accounts.map((acc) => {
+                  const accLotCount = accountLots[acc.id] ?? 1;
+                  const accQty = accLotCount * currentLotSize;
+                  const isSkipped = accLotCount === 0;
+
+                  return (
+                    <div
+                      key={acc.id}
+                      className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 text-xs transition-colors ${
+                        isSkipped ? 'bg-slate-100/60 border-slate-200 opacity-60' : 'bg-white border-slate-200 shadow-2xs'
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-slate-900 truncate flex items-center gap-1.5">
+                          <span>{acc.name}</span>
+                          <span className="text-[10px] font-mono font-normal text-slate-500">
+                            ({acc.clientId})
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-emerald-700 font-mono font-semibold flex items-center gap-1 mt-0.5">
+                          <Wallet className="w-3 h-3 text-emerald-600" />
+                          <span>
+                            Available Funds: ₹{(acc.availableMargin || 0).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Individual Lots Counter */}
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-1.5 py-0.5">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAccountLots((p) => ({
+                                ...p,
+                                [acc.id]: Math.max(0, (p[acc.id] ?? 1) - 1),
+                              }))
+                            }
+                            className="p-1 rounded-lg hover:bg-slate-200 text-slate-700 font-bold"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <input
+                            type="number"
+                            min="0"
+                            value={accLotCount}
+                            onChange={(e) =>
+                              setAccountLots((p) => ({
+                                ...p,
+                                [acc.id]: Math.max(0, Number(e.target.value)),
+                              }))
+                            }
+                            className="w-10 text-xs font-mono font-extrabold text-slate-900 text-center focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAccountLots((p) => ({
+                                ...p,
+                                [acc.id]: (p[acc.id] ?? 1) + 1,
+                              }))
+                            }
+                            className="p-1 rounded-lg hover:bg-slate-200 text-slate-700 font-bold"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+
+                        <span
+                          className={`text-[10px] font-mono font-bold w-14 text-right ${
+                            isSkipped ? 'text-slate-400' : 'text-blue-700'
+                          }`}
+                        >
+                          {isSkipped ? 'SKIPPED' : `${accQty} Qty`}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Total Multi-Account Summary Bar */}
+              <div className="bg-blue-50/80 border border-blue-200 rounded-xl p-2.5 flex items-center justify-between text-[11px] font-mono">
+                <span className="text-blue-900 font-semibold">Total Multi-Account Allocation:</span>
+                <span className="font-extrabold text-blue-950">
+                  {totalMultiLots} Lots ({totalQuantity} Shares total)
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Preset Underlying Selector Chips */}
           <div>
@@ -550,34 +762,42 @@ export const ManualOrderModal: React.FC = () => {
             {/* Lots */}
             <div>
               <div className="flex justify-between items-center mb-1.5">
-                <label className="text-xs font-bold text-slate-700">Number of Lots</label>
+                <label className="text-xs font-bold text-slate-700">
+                  {selectedAccountId === 'ALL' ? 'Total Multi-Account Lots' : 'Number of Lots'}
+                </label>
                 <span className="text-[10px] text-blue-600 font-bold font-mono">
                   {totalQuantity} Qty
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setLots((prev) => Math.max(1, prev - 1))}
-                  className="p-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200 transition-colors"
-                >
-                  <Minus className="w-4 h-4" />
-                </button>
-                <input
-                  type="number"
-                  min="1"
-                  value={lots}
-                  onChange={(e) => setLots(Math.max(1, Number(e.target.value)))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-extrabold text-slate-900 text-center focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
-                />
-                <button
-                  type="button"
-                  onClick={() => setLots((prev) => prev + 1)}
-                  className="p-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
+              {selectedAccountId === 'ALL' ? (
+                <div className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 text-xs font-extrabold text-blue-900 text-center font-mono">
+                  {totalMultiLots} Lots ({accounts.filter((a) => (accountLots[a.id] || 0) > 0).length} Accounts Active)
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLots((prev) => Math.max(1, prev - 1))}
+                    className="p-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200 transition-colors"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <input
+                    type="number"
+                    min="1"
+                    value={lots}
+                    onChange={(e) => setLots(Math.max(1, Number(e.target.value)))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-extrabold text-slate-900 text-center focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setLots((prev) => prev + 1)}
+                    className="p-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Order Type */}
@@ -889,7 +1109,9 @@ export const ManualOrderModal: React.FC = () => {
               ) : (
                 <>
                   <Zap className="w-4.5 h-4.5" />
-                  <span>Place {side} Order ({totalQuantity} Shares)</span>
+                  <span>
+                    Place {side} Order ({totalEffectiveLots} Lots • {totalQuantity} Shares)
+                  </span>
                 </>
               )}
             </button>

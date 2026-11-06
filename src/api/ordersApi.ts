@@ -13,6 +13,15 @@ export interface CreateOrderRequest {
   algoName?: string;
 }
 
+export interface AccountLotAllocation {
+  accountId: string;
+  accountName?: string;
+  lots: number;
+  multiplier?: number;
+  availableMargin?: number;
+  usedMargin?: number;
+}
+
 export interface BasketLegItem {
   id?: string;
   symbol: string;
@@ -34,10 +43,14 @@ export interface BasketOrderRequest {
   basketName?: string;
   hedge_first?: boolean;
   orders: BasketLegItem[];
+  accountAllocations?: AccountLotAllocation[];
 }
 
 export interface BasketLegResult {
   original_index: number;
+  exec_index?: number;
+  accountId?: string;
+  accountName?: string;
   order: BasketLegItem;
   status: 'SUCCESS' | 'FAILED' | string;
   order_id?: string;
@@ -51,6 +64,7 @@ export interface BasketOrderResponse {
   totalOrders: number;
   successfulOrders: number;
   failedOrders: number;
+  accountCount?: number;
   results: BasketLegResult[];
   timestamp: string;
 }

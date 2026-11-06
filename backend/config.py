@@ -108,6 +108,36 @@ class Settings(BaseSettings):
     except Exception:
       return "configured (unparseable)"
 
+  def probe_angel_egress(self, timeout: float = 15.0) -> Dict[str, Any]:
+    """
+    Verify the egress IP that Angel One actually sees through the proxy.
+
+    This performs a real request through the configured proxy and compares the
+    observed address with ANGEL_STATIC_IP. Never returns proxy credentials.
+    """
+    result: Dict[str, Any] = {
+      "enabled": self.angel_proxy_enabled,
+      "staticIp": self.angel_static_ip or None,
+      "observedIp": None,
+      "matchesStaticIp": None,
+      "error": None,
+    }
+    if not self.angel_proxy_enabled:
+      return result
+    try:
+      import requests
+      resp = requests.get(
+        "https://api.ipify.org",
+        timeout=timeout,
+        proxies=self.angel_proxies,
+      )
+      observed = (resp.text or "").strip()
+      result["observedIp"] = observed or None
+      result["matchesStaticIp"] = bool(observed and observed == self.angel_static_ip)
+    except Exception as exc:
+      result["error"] = f"{type(exc).__name__}: {str(exc)[:200]}"
+    return result
+
   def apply_angel_proxy_env(self) -> None:
     """
     Export the proxy for libraries that call requests/urllib directly.

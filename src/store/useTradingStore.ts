@@ -230,7 +230,20 @@ export const useTradingStore = create<TradingState>((set, get) => ({
       }
       return res;
     } catch (err: any) {
-      const errorMsg = err?.response?.data?.message || err?.response?.data?.detail || err?.message || 'Connection test failed';
+      const response = err?.response;
+      const data = response?.data;
+      const serverMessage =
+        (data && typeof data === 'object'
+          ? data.message || data.detail || data.error
+          : typeof data === 'string'
+            ? data.trim()
+            : '') || '';
+      const status = response?.status;
+      const errorMsg = serverMessage
+        ? `${serverMessage}${status ? ` (HTTP ${status})` : ''}`
+        : status
+          ? `Server error HTTP ${status}: ${err?.message || 'no response body'}`
+          : err?.message || 'Connection test failed';
       set((state) => ({
         accounts: state.accounts.map((a) =>
           a.id === accountId ? { ...a, status: 'Authentication_Required' as ConnectionStatus } : a

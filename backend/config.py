@@ -1,5 +1,6 @@
 import os
-from typing import Dict, Optional
+import re
+from typing import Any, Dict, Optional
 from urllib.parse import urlparse
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
@@ -161,3 +162,20 @@ class Settings(BaseSettings):
 
 settings = Settings()
 settings.apply_angel_proxy_env()
+
+
+def redact_secrets(text: str) -> str:
+  """
+  Strip proxy/database credentials from error strings before they are logged
+  or returned to the frontend.
+  """
+  if not text:
+    return ""
+  redacted = re.sub(r"(://[^:/@\s]+:)[^@/\s]+@", r"\1***@", text)
+  try:
+    password = urlparse(settings.ANGEL_PROXY_URL).password
+    if password and len(password) >= 4:
+      redacted = redacted.replace(password, "***")
+  except Exception:
+    pass
+  return redacted

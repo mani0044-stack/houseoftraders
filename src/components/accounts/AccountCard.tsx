@@ -41,7 +41,9 @@ export const AccountCard: React.FC<AccountCardProps> = ({ account, onViewDetails
       if (res.success) {
         addToast('Connection Successful', `Connected to Angel One SmartAPI for ${account.name}. Margin: ₹${(res.availableMargin ?? 0).toLocaleString()}`, 'success');
       } else {
-        addToast('Authentication Failed', res.message || 'Check your Client ID, MPIN, API Key, and TOTP secret key.', 'error');
+        const msg = res.message || 'Check your Client ID, MPIN, API Key, and TOTP secret key.';
+        const isAuthIssue = /auth|credential|totp|api key|\bpin\b/i.test(msg);
+        addToast(isAuthIssue ? 'Authentication Failed' : 'Connection Failed', msg, 'error');
       }
     } catch (err: any) {
       addToast('Connection Error', err?.message || 'Failed connecting to Angel One.', 'error');

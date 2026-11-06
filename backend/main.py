@@ -5,8 +5,11 @@ import logging
 from typing import List
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
-from backend.config import settings
+from backend.config import settings, redact_secrets
 from backend.database.session import engine, Base
 from backend.api.auth_routes import router as auth_router
 from backend.api.account_routes import router as account_router
@@ -30,8 +33,19 @@ if settings.angel_proxy_enabled:
 else:
     logger.info("Angel One static-IP proxy not configured; using direct egress.")
 
-# Create database tables if not existing
-Base.metadata.create_all(bind=engine)
+# Create database tables if not existing. A database outage must not prevent the
+# API from starting: the whole serverless function would crash on import and the
+# platform would return a bodyless HTTP 500, hiding the real cause.
+try:
+    Base.metadata.create_all(bind=engine)
+    logger.info("Database schema verified.")
+except Exception as exc:
+    logger.error(
+        "Database schema initialization failed (%s: %s). The API will still start, "
+        "but database-backed endpoints will return HTTP 503 until PostgreSQL is reachable.",
+        type(exc).__name__,
+        redact_secrets(str(exc)),
+    )
 
 app = FastAPI(
     title="AlgoTrade Options Algorithmic Trading API",
@@ -189,6 +203,25 @@ async def startup_event():
         from backend.engine.sensibull_live_service import sensibull_live_service
         asyncio.create_task(sensibull_live_service.connect_and_stream())
 
+@app.exception_handler(SQLAlchemyError)
+async def database_error_handler(request, exc: SQLAlchemyError):
+    detail = f"{type(exc).__name__}: {exc}"
+    if len(detail) > 300:
+        detail = detail[:300] + "..."
+    logger.error(
+        "Database error on %s %s: %s",
+        request.method,
+        request.url.path,
+        redact_secrets(detail),
+    )
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": f"Database unavailable: {redact_secrets(detail)}",
+            "hint": "The backend could not reach PostgreSQL. Check DATABASE_URL and that the database accepts connections from this host.",
+        },
+    )
+
 @app.get("/")
 def root():
     return {
@@ -199,13 +232,22 @@ def root():
     }
 
 @app.get("/health")
-def health_check():
-    return {
+def health_check(db: bool = False):
+    payload = {
         "status": "online",
         "app": "AlgoTrade",
         "live_trading_enabled": settings.LIVE_TRADING,
         "paper_trading_mode": not settings.LIVE_TRADING
     }
+    if db:
+        try:
+            with engine.connect() as connection:
+                connection.execute(text("SELECT 1"))
+            payload["database"] = "ok"
+        except Exception as exc:
+            message = redact_secrets(f"{type(exc).__name__}: {exc}")
+            payload["database"] = f"error: {message[:200]}"
+    return payload
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):

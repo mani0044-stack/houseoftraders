@@ -109,6 +109,26 @@ routes SmartAPI authentication and every order/data call through the configured 
 `ANGEL_STATIC_IP` is optional when the proxy host is itself the egress IP; it is then
 derived from `ANGEL_PROXY_URL`. Credentials are never written to logs or API responses.
 
+### Debugging HTTP 500 / “Request failed with status code 500”
+
+That message is axios' generic text for an HTTP **500/503 with a non-JSON body** —
+it is not an Angel One credential error. Broker auth failures return HTTP 200 with
+`success: false` and a readable `message`.
+
+```bash
+curl "http://localhost:8000/health?db=true"        # database reachability
+curl "http://localhost:8000/api/v1/accounts/proxy-status?verify=true"
+```
+
+If `database` is not `ok`, the API cannot serve any account/order route. Common causes:
+
+- The backend is not running (check port 8000) or the serverless function crashed.
+- PostgreSQL is unreachable. If your ISP/router resolver refuses the database host
+  (neon `*.aws.neon.tech` endpoints are refused by some Indian ISP DNS servers), the
+  backend automatically falls back to DNS-over-HTTPS, so this is handled.
+- On Vercel, an unhandled database error at cold start used to kill the whole
+  function; it now starts and returns a JSON `503` with the real cause.
+
 ---
 
 ## 🐳 Run Every Server At Once with Docker

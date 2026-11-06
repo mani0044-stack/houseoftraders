@@ -1,11 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Optional
+import logging
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from backend.database.session import get_db
 from backend.database.models import TradingAccountModel
 from backend.security.encryption import vault
 from backend.broker.angel_session import session_manager
+from backend.config import redact_secrets
+
+logger = logging.getLogger("algotrade")
 
 router = APIRouter(prefix="/accounts", tags=["Accounts"])
 
@@ -245,6 +249,32 @@ def update_account_credentials(account_id: str, payload: AccountCreatePayload, d
 
 @router.post("/{account_id}/test-connection")
 def test_broker_connection(account_id: str, db: Session = Depends(get_db)):
+  """
+  Re-authenticate an Angel One account and report a structured result.
+
+  Broker/auth failures are returned as ``success: false`` with a readable
+  message. Infrastructure failures (database, proxy, unexpected exceptions)
+  return HTTP 503 with a JSON ``detail`` so the UI can show the real cause
+  instead of a generic "Request failed with status code 500".
+  """
+  try:
+    return _test_broker_connection(account_id, db)
+  except HTTPException:
+    raise
+  except Exception as exc:
+    message = redact_secrets(f"{type(exc).__name__}: {exc}")
+    logger.exception(
+      "Unexpected error in test-connection for account %s: %s", account_id, message
+    )
+    raise HTTPException(
+      status_code=503,
+      detail=(
+        f"Connection test failed: {message[:300]}. "
+        f"Check backend logs and /health?db=true."
+      ),
+    )
+
+def _test_broker_connection(account_id: str, db: Session):
   acc = db.query(TradingAccountModel).filter(TradingAccountModel.id == account_id).first()
   if not acc:
     raise HTTPException(status_code=404, detail="Account not found")

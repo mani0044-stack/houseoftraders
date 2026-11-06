@@ -21,6 +21,15 @@ from backend.api.ingestor_routes import router as ingestor_router
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("algotrade")
 
+if settings.angel_proxy_enabled:
+    logger.info(
+        "Angel One traffic routed through static-IP proxy %s (egress IP %s)",
+        settings.angel_proxy_display,
+        settings.angel_static_ip or "unknown",
+    )
+else:
+    logger.info("Angel One static-IP proxy not configured; using direct egress.")
+
 # Create database tables if not existing
 Base.metadata.create_all(bind=engine)
 

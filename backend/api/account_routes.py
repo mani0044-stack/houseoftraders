@@ -71,6 +71,16 @@ def get_accounts(db: Session = Depends(get_db)):
     })
   return result
 
+@router.get("/proxy-status")
+def get_proxy_status():
+  """Report whether Angel One traffic uses a static-IP egress proxy (no secrets)."""
+  from backend.config import settings
+  return {
+    "enabled": settings.angel_proxy_enabled,
+    "staticIp": settings.angel_static_ip or None,
+    "proxyHost": settings.angel_proxy_host or None,
+  }
+
 @router.post("")
 def add_account(payload: AccountCreatePayload, db: Session = Depends(get_db)):
   new_id = f"acc-{payload.clientId.replace(' ', '')}"

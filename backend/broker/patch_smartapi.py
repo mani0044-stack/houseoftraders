@@ -4,6 +4,7 @@ import logging
 import urllib.request
 import logzero
 from SmartApi import SmartConnect
+from backend.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,15 @@ def get_real_public_ip() -> str:
     global _CACHED_PUBLIC_IP
     if _CACHED_PUBLIC_IP:
         return _CACHED_PUBLIC_IP
+
+    # When trading through a static-IP egress proxy, the IP Angel One sees is the
+    # proxy's egress IP. Use the configured value instead of probing (which would
+    # otherwise report the host IP and trigger an IP-whitelist rejection).
+    static_ip = settings.angel_static_ip
+    if static_ip:
+        _CACHED_PUBLIC_IP = static_ip
+        return static_ip
+
     try:
         with urllib.request.urlopen("https://api.ipify.org", timeout=2.0) as resp:
             ip = resp.read().decode("utf-8").strip()
@@ -65,10 +75,22 @@ def _safe_smartconnect_init(self, *args, **kwargs):
         os.makedirs = orig_makedirs
         logzero.logfile = orig_logfile
 
-    # Override hardcoded default '106.193.147.98' with actual host public IP
+    # Route every SmartAPI call through the configured static-IP proxy unless the
+    # caller supplied its own proxy mapping.
+    if not self.proxies:
+        self.proxies = settings.angel_proxies or {}
+
+    # Override hardcoded default '106.193.147.98' with the egress IP Angel One sees.
     real_ip = get_real_public_ip()
     self.clientPublicIp = real_ip
     self.clientPublicIP = real_ip
+
+    if settings.angel_proxy_enabled:
+        logger.info(
+            "Angel One SmartAPI egress via %s (advertised client IP: %s)",
+            settings.angel_proxy_display,
+            real_ip or "unknown",
+        )
 
 SmartConnect.__init__ = _safe_smartconnect_init
 

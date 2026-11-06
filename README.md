@@ -81,6 +81,28 @@ To connect to a live FastAPI backend:
 
 ---
 
+## 🌐 Angel One Static-IP Egress (TrueIP / SEBI)
+
+Angel One requires order APIs to originate from a registered static IP. The backend
+routes SmartAPI authentication and every order/data call through the configured proxy.
+
+1. Put the proxy settings in `.env.local` (gitignored) for local runs, or in the
+   process environment / deployment dashboard for Docker and production:
+   ```env
+   ANGEL_PROXY_URL=http://username:password@static-ip:port
+   ANGEL_STATIC_IP=static-ip
+   ```
+2. Whitelist `ANGEL_STATIC_IP` in **Angel One → SmartAPI → Static IP** settings.
+3. Restart the backend, then verify with:
+   ```bash
+   curl http://localhost:8000/api/v1/accounts/proxy-status
+   ```
+
+`ANGEL_STATIC_IP` is optional when the proxy host is itself the egress IP; it is then
+derived from `ANGEL_PROXY_URL`. Credentials are never written to logs or API responses.
+
+---
+
 ## 🐳 Run Every Server At Once with Docker
 
 The stack includes every process the platform needs:

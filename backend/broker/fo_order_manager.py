@@ -849,9 +849,13 @@ def authenticate_angel_session(
         Tuple of (smart_connect_instance, session_data_dict)
     """
     from SmartApi import SmartConnect
+    from backend.config import settings
 
     totp_code = generate_totp_code(totp_secret)
-    smart_api = SmartConnect(api_key=api_key)
+    smart_api = SmartConnect(
+        api_key=api_key,
+        proxies=settings.angel_proxies,
+    )
 
     session_res = smart_api.generateSession(client_id, pin, totp_code)
 

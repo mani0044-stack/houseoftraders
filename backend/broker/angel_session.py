@@ -4,6 +4,7 @@ from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
 import backend.broker.patch_smartapi  # Apply SmartConnect read-only FS patch
 from SmartApi import SmartConnect
+from backend.config import settings
 from backend.engine.instrument_service import instrument_service
 from backend.broker.fo_order_manager import (
   get_scrip_master,
@@ -95,7 +96,12 @@ class AccountSession:
       return False, msg
 
     try:
-      self.smart_api = SmartConnect(api_key=self.api_key)
+      # Route authentication and all subsequent order traffic through the
+      # configured static-IP proxy (when enabled) so Angel One sees that IP.
+      self.smart_api = SmartConnect(
+        api_key=self.api_key,
+        proxies=settings.angel_proxies,
+      )
       auth_data = self.smart_api.generateSession(self.client_id, self.pin, totp_code)
 
       if auth_data and auth_data.get("status"):
@@ -117,6 +123,11 @@ class AccountSession:
       err_str = str(e)
       logger.error(f"Failed Angel One authentication exception for {self.client_id}: {err_str}")
       self.status = "AUTHENTICATION_REQUIRED"
+      if settings.angel_proxy_enabled:
+        return False, (
+          f"Angel One Connection Error via static-IP proxy "
+          f"{settings.angel_proxy_host or 'configured'}: {err_str}"
+        )
       return False, f"Angel One Connection Error: {err_str}"
 
   def fetch_rms_limits(self) -> Dict[str, float]:

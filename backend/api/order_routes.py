@@ -405,9 +405,10 @@ def _execute_single_fo_order(payload: Dict[str, Any], db: Session) -> Dict[str, 
             lots = int(payload.get("lots") or 1)
             total_qty = lots * int(scrip_info["lotsize"] or 1)
             mock_order_id = f"ANGEL-{uuid.uuid4().hex[:8].upper()}"
-            order_type = str(payload.get("order_type") or "MARKET").upper()
+            order_type = str(payload.get("order_type") or payload.get("ordertype") or "MARKET").upper()
+            prod_type = str(payload.get("product_type") or payload.get("producttype") or "CARRYFORWARD").upper()
             exec_price = float(payload.get("price", 0.0) or 0.0)
-            if exec_price <= 0:
+            if exec_price <= 0 or order_type == "MARKET":
                 # Demo fill reference price only; real orders use the broker LTP.
                 exec_price = 145.50
             trade_side = str(payload.get("transaction_type", "BUY")).upper()
@@ -428,7 +429,7 @@ def _execute_single_fo_order(payload: Dict[str, Any], db: Session) -> Dict[str, 
                 price=exec_price,
                 average_price=exec_price,
                 status="COMPLETED",
-                timeline={"placed": timestamp_str, "filled": timestamp_str}
+                timeline={"placed": timestamp_str, "filled": timestamp_str, "product_type": prod_type, "order_type": order_type}
             )
             db.add(order_entry)
             db.commit()
@@ -453,7 +454,10 @@ def _execute_single_fo_order(payload: Dict[str, Any], db: Session) -> Dict[str, 
                     "tradingsymbol": scrip_info["tradingsymbol"],
                     "symboltoken": scrip_info["symboltoken"],
                     "quantity": total_qty,
-                    "lots": lots
+                    "lots": lots,
+                    "order_type": order_type,
+                    "product_type": prod_type,
+                    "price": exec_price
                 }
             }
         except Exception as e:
@@ -556,11 +560,19 @@ def place_basket_order_route(payload: Dict[str, Any], db: Session = Depends(get_
     Execute a multi-leg basket order.
     Supports individual account lot allocation when 'accountAllocations' is supplied.
     Supports hedge_first ordering (BUY legs executed before SELL legs) across all accounts to maximize exchange margin benefits.
+    Supports CARRYFORWARD (overnight/NRML) vs INTRADAY (MIS) and MARKET vs LIMIT execution at both basket and leg levels.
     """
     basket_name = payload.get("basketName") or payload.get("name") or "Basket Order"
     orders: List[Dict[str, Any]] = payload.get("orders") or []
     hedge_first = bool(payload.get("hedge_first", True))
     default_acc_id = payload.get("accountId")
+
+    raw_basket_prod = str(payload.get("product_type") or payload.get("producttype") or "CARRYFORWARD").upper()
+    basket_product_type = "INTRADAY" if raw_basket_prod in ["MIS", "INTRADAY", "DAY"] else "CARRYFORWARD"
+
+    raw_basket_order_type = str(payload.get("order_type") or payload.get("ordertype") or "MARKET").upper()
+    basket_order_type = "LIMIT" if raw_basket_order_type == "LIMIT" else "MARKET"
+
     allocations = payload.get("accountAllocations") or []
     valid_allocs = [a for a in allocations if int(a.get("lots", 0)) > 0]
 
@@ -587,6 +599,16 @@ def place_basket_order_route(payload: Dict[str, Any], db: Session = Depends(get_
                 item_copy["_account_id"] = acc_id
                 item_copy["_account_name"] = acc_name
                 item_copy["accountId"] = acc_id
+
+                # Inherit or override product_type and order_type
+                leg_prod = str(item_copy.get("product_type") or item_copy.get("producttype") or basket_product_type).upper()
+                item_copy["product_type"] = "INTRADAY" if leg_prod in ["MIS", "INTRADAY", "DAY"] else "CARRYFORWARD"
+
+                leg_order_type = str(item_copy.get("order_type") or item_copy.get("ordertype") or basket_order_type).upper()
+                item_copy["order_type"] = "LIMIT" if leg_order_type == "LIMIT" else "MARKET"
+                if item_copy["order_type"] == "MARKET":
+                    item_copy["price"] = 0.0
+
                 # Scale leg lots by the account's assigned lot multiplier
                 base_leg_lots = int(ord_item.get("lots") or 1)
                 item_copy["lots"] = max(1, int(base_leg_lots * multiplier))
@@ -602,6 +624,15 @@ def place_basket_order_route(payload: Dict[str, Any], db: Session = Depends(get_
             item_copy["_account_name"] = "Target Account"
             if not item_copy.get("accountId") and default_acc_id:
                 item_copy["accountId"] = default_acc_id
+
+            leg_prod = str(item_copy.get("product_type") or item_copy.get("producttype") or basket_product_type).upper()
+            item_copy["product_type"] = "INTRADAY" if leg_prod in ["MIS", "INTRADAY", "DAY"] else "CARRYFORWARD"
+
+            leg_order_type = str(item_copy.get("order_type") or item_copy.get("ordertype") or basket_order_type).upper()
+            item_copy["order_type"] = "LIMIT" if leg_order_type == "LIMIT" else "MARKET"
+            if item_copy["order_type"] == "MARKET":
+                item_copy["price"] = 0.0
+
             orders_to_execute.append(item_copy)
 
     # If hedge_first is enabled, prioritize BUY legs before SELL legs across all accounts
@@ -640,7 +671,8 @@ def place_basket_order_route(payload: Dict[str, Any], db: Session = Depends(get_
                 "transaction_type": ord_item.get("transaction_type") or ord_item.get("side"),
                 "lots": ord_item.get("lots", 1),
                 "order_type": ord_item.get("order_type", "MARKET"),
-                "price": ord_item.get("price", 0.0),
+                "product_type": ord_item.get("product_type", "CARRYFORWARD"),
+                "price": float(ord_item.get("price", 0.0) or 0.0),
             },
             "status": res.get("status"),
             "order_id": res.get("order_id") or (res.get("data") or {}).get("orderid"),
@@ -656,6 +688,8 @@ def place_basket_order_route(payload: Dict[str, Any], db: Session = Depends(get_
     return {
         "status": overall_status,
         "basketName": basket_name,
+        "productType": basket_product_type,
+        "orderType": basket_order_type,
         "totalOrders": len(orders_to_execute),
         "successfulOrders": successful_count,
         "failedOrders": failed_count,

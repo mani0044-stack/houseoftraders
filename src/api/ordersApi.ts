@@ -42,6 +42,8 @@ export interface BasketOrderRequest {
   accountId?: string;
   basketName?: string;
   hedge_first?: boolean;
+  product_type?: 'INTRADAY' | 'CARRYFORWARD';
+  order_type?: 'MARKET' | 'LIMIT';
   orders: BasketLegItem[];
   accountAllocations?: AccountLotAllocation[];
 }
@@ -61,6 +63,8 @@ export interface BasketLegResult {
 export interface BasketOrderResponse {
   status: 'SUCCESS' | 'PARTIAL' | 'FAILED';
   basketName: string;
+  productType?: 'INTRADAY' | 'CARRYFORWARD' | string;
+  orderType?: 'MARKET' | 'LIMIT' | string;
   totalOrders: number;
   successfulOrders: number;
   failedOrders: number;

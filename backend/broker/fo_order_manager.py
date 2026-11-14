@@ -768,6 +768,7 @@ def place_fo_order(
             "lots": lots_count,
             "lotsize": lot_size,
             "order_type": order_type,
+            "product_type": product_type,
             "price": float(price_str or 0),
             "trigger_price": float(trigger_price_str or 0),
         }

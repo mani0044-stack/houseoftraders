@@ -7,9 +7,14 @@ export interface Position {
   symbol: string;
   underlying: UnderlyingSymbol;
   expiry: string;
+  rawExpiry?: string;
   strike: number;
-  type: 'CE' | 'PE' | 'FUT';
-  quantity: number; // positive for BUY, negative for SELL
+  type: 'CE' | 'PE' | 'FUT' | 'EQ' | string;
+  quantity: number; // positive for BUY (Long), negative for SELL (Short)
+  side?: 'BUY' | 'SELL';
+  productType?: 'CARRYFORWARD' | 'INTRADAY' | string;
+  lots?: number;
+  lotSize?: number;
   averagePrice: number;
   ltp: number;
   unrealizedPnL: number;
@@ -19,4 +24,6 @@ export interface Position {
   algoName: string;
   status: 'OPEN' | 'CLOSED';
   entryTime: string;
+  symbolToken?: string;
+  exchange?: string;
 }

@@ -285,8 +285,19 @@ def cancel_order(order_id: str, db: Session = Depends(get_db)):
 def sync_position_on_order(db: Session, account_id: str, account_name: str, symbol: str, side: str, quantity: int, price: float, algo_id: str = "MANUAL", algo_name: str = "Manual Execution"):
     """Helper to update or create open position in database when an order executes."""
     try:
-        underlying = "BANKNIFTY" if "BANK" in symbol else "FINNIFTY" if "FIN" in symbol else "SENSEX" if "SENSEX" in symbol else "NIFTY"
-        pos_type = "CE" if "CE" in symbol else "PE" if "PE" in symbol else "EQ"
+        from backend.broker.fo_order_manager import parse_fo_symbol
+        parsed = parse_fo_symbol(symbol)
+        if parsed:
+            underlying = parsed["underlying"]
+            pos_type = parsed["option_type"]
+            strike_val = float(parsed["strike"] or 0.0)
+            expiry_val = parsed["expiry"] or "Live"
+        else:
+            underlying = "BANKNIFTY" if "BANK" in symbol else "FINNIFTY" if "FIN" in symbol else "SENSEX" if "SENSEX" in symbol else "NIFTY"
+            pos_type = "CE" if "CE" in symbol else "PE" if "PE" in symbol else "EQ"
+            strike_val = 0.0
+            expiry_val = "Live"
+
         timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         existing_pos = db.query(PositionModel).filter(
@@ -314,8 +325,8 @@ def sync_position_on_order(db: Session, account_id: str, account_name: str, symb
                 account_name=account_name,
                 symbol=symbol,
                 underlying=underlying,
-                expiry="Live",
-                strike=0.0,
+                expiry=expiry_val,
+                strike=strike_val,
                 type=pos_type,
                 quantity=change_qty,
                 average_price=price if price > 0 else 100.0,

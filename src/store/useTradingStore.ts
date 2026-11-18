@@ -18,7 +18,7 @@ import {
 } from '../services/mockData';
 import { accountsApi } from '../api/accountsApi';
 import { ordersApi, CreateOrderRequest } from '../api/ordersApi';
-import { positionsApi } from '../api/positionsApi';
+import { positionsApi, ExitPositionResponse, ExitAllPositionsResponse } from '../api/positionsApi';
 import { marketApi } from '../api/marketApi';
 import { algosApi } from '../api/algosApi';
 
@@ -84,8 +84,8 @@ interface TradingState {
   updateAlgorithm: (algo: Algorithm) => void;
   deleteAlgorithm: (algoId: string) => void;
   placeOrder: (payload: CreateOrderRequest) => Promise<any>;
-  exitPosition: (positionId: string) => Promise<void>;
-  exitAllPositions: () => Promise<void>;
+  exitPosition: (positionId: string, positionData?: Partial<Position>) => Promise<ExitPositionResponse>;
+  exitAllPositions: (accountId?: string) => Promise<ExitAllPositionsResponse>;
   emergencyStopAll: () => void;
   updateMarketQuote: (symbol: string, ltpDelta: number) => void;
   setWsStatus: (connected: boolean, latency?: number) => void;
@@ -411,16 +411,18 @@ export const useTradingStore = create<TradingState>((set, get) => ({
     return res;
   },
 
-  exitPosition: async (positionId) => {
-    await positionsApi.exitPosition(positionId);
+  exitPosition: async (positionId, positionData) => {
+    const res = await positionsApi.exitPosition(positionId, positionData);
     await get().fetchPositions();
     await get().fetchOrders();
+    return res;
   },
 
-  exitAllPositions: async () => {
-    await positionsApi.exitAllPositions();
+  exitAllPositions: async (accountId) => {
+    const res = await positionsApi.exitAllPositions(accountId);
     await get().fetchPositions();
     await get().fetchOrders();
+    return res;
   },
 
   emergencyStopAll: () => {

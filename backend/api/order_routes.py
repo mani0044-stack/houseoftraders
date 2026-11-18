@@ -401,7 +401,14 @@ def _execute_single_fo_order(payload: Dict[str, Any], db: Session) -> Dict[str, 
     if req_expiry and not payload.get("expiry"):
         payload["expiry"] = req_expiry
 
-    # If no connected live session, place order in DB demo/paper mode
+    # If target account has API credentials configured but failed to connect, return explicit error
+    if target_acc and target_acc.encrypted_api_key and not smart_api:
+        return {
+            "status": "FAILED",
+            "error": f"Angel One SmartAPI is not connected for account '{target_acc.name}' ({target_acc.client_id}). Please verify API Key, PIN, TOTP, and static IP whitelist in Accounts."
+        }
+
+    # If no connected live session and no real credentials configured, place order in DB demo/paper mode
     if not smart_api:
         try:
             scrip_info = scrip_master.lookup_fo_instrument(

@@ -266,7 +266,14 @@ def get_positions(db: Session = Depends(get_db)):
     Returns organized, fully enriched positions list across all accounts.
     Includes strike price, expiry date, contract type, lot count, and live P&L.
     """
-    db_positions = db.query(PositionModel).all()
+    valid_accounts = db.query(TradingAccountModel).filter(TradingAccountModel.is_enabled == True).all()
+    valid_account_ids = {a.id for a in valid_accounts}
+
+    # Only include positions for existing valid accounts, strictly excluding demo/dummy
+    db_positions = [
+        p for p in db.query(PositionModel).all()
+        if p.account_id in valid_account_ids and p.account_id != "acc-demo"
+    ]
     results: List[Dict[str, Any]] = []
 
     for pos in db_positions:
